@@ -104,12 +104,43 @@ public class RobotPlayer {
 	    			rc.move(facing);
 	    		}
 	    }
-	    
-	    
-    	public Direction getRandDir() {
-    		return Direction.values()[(int)(rand.nextDouble()*8)]; 
-    	}
+
+        private static void mineAndMove() throws GameActionException {
+        MapLocation toMove = rc.getLocation();
+        double ore = rc.senseOre(toMove);
+        MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
+        for(MapLocation ml : possibleBlocks){
+            if(rc.senseTerrainTile(ml) == TerrainTile.NORMAL && !rc.isLocationOccupied(ml) && rc.senseOre(ml) > ore){
+                toMove = ml;
+                ore = rc.senseOre(ml);
+            }
+        }
+
+        int robs = 0;
+        RobotInfo[] nearbyAllies = rc.senseNearbyRobots(toMove, 1, rc.getTeam());
+        for(RobotInfo ri : nearbyAllies){
+            if(ri.type == RobotType.MINER)
+                robs++;
+        }
+
+        if(ore >= rc.readBroadcast(6) && robs < rc.readBroadcast(9)){
+            rc.broadcast(6, (int)ore);
+            rc.broadcast(9, robs);
+            rc.broadcast(10, toMove.x);
+            rc.broadcast(11, toMove.y);
+        }
         
+        if(toMove == rc.getLocation() && ore > 40){
+            rc.mine();
+        }
+        else if(ore > 40)
+            rc.move(rc.getLocation().directionTo(toMove));
+        else{
+            MapLocation bestBlock = new MapLocation(rc.readBroadcast(10), rc.readBroadcast(11));
+            rc.move(rc.getLocation().directionTo(bestBlock));
+        }
+    }
+
     	public boolean spawnUnit(RobotType type, Direction dir) throws GameActionException {
     		if(rc.isCoreReady()&&rc.canSpawn(dir, type)){
     			rc.spawn(dir, type);
@@ -320,7 +351,7 @@ public class RobotPlayer {
         			rc.broadcast(2, rc.readBroadcast(2) + 1);
         		}
         	}
-            
+
             MapLocation rallyPoint;
             if (Clock.getRoundNum() < 1000) {
                 rallyPoint = new MapLocation( (this.myHQ.x + this.theirHQ.x) / 2,
