@@ -3,6 +3,7 @@ package washyourhands;
 import battlecode.common.*;
 
 import java.util.*;
+import java.utils.array;
 
 public class RobotPlayer {
 	static int maxBeavers=2;
@@ -166,6 +167,8 @@ public class RobotPlayer {
             return null;
         }
         
+
+        
     	public void tranferSupplies() throws GameActionException {
     		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(),GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,rc.getTeam());
     		double lowestSupply = rc.getSupplyLevel();
@@ -193,7 +196,20 @@ public class RobotPlayer {
             RobotInfo[] enemies = rc.senseNearbyRobots(RobotType.SOLDIER.attackRadiusSquared, theirTeam);
             return enemies;
         }
-
+        
+        public MapLocation getClosestToEnemyHQ(MapLocation[] locs){
+        	int min = 9999;
+        	int dist;
+        	MapLocation minLoc;
+        	for (MapLocation loc : locs)
+        		dist = loc.distanceSquaredTo(this.theirHQ);
+        		if(dist<min){
+        			min=dist;
+					minLoc=loc;
+        		}
+        	return minLoc;
+        }
+        
         public void attackLeastHealthEnemy(RobotInfo[] enemies) throws GameActionException {
             if (enemies.length == 0) {
                 return;
@@ -280,8 +296,7 @@ public class RobotPlayer {
 
             MapLocation rallyPoint;
             if (Clock.getRoundNum() < 1000) {
-                rallyPoint = new MapLocation( (this.myHQ.x + this.theirHQ.x) / 2,
-                                              (this.myHQ.y + this.theirHQ.y) / 2);
+                rallyPoint = new MapLocation();
             }
             else {
                 rallyPoint = this.theirHQ;
