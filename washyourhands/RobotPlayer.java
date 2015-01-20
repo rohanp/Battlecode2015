@@ -201,12 +201,14 @@ public class RobotPlayer {
         	int min = 9999;
         	int dist;
         	MapLocation minLoc;
-        	for (MapLocation loc : locs)
-        		dist = loc.distanceSquaredTo(this.theirHQ);
+        	for (int i=0; i<locs.length; i++){
+        		MapLocation myLoc=locs[i];
+        		dist = locs[i].distanceSquaredTo(this.theirHQ);
         		if(dist<min){
         			min=dist;
-					minLoc=loc;
+					minLoc=myLoc;
         		}
+        	}
         	return minLoc;
         }
         
@@ -274,7 +276,7 @@ public class RobotPlayer {
         public static boolean isFinished;
 
         public static int strategy; // 0 = "defend", 1 = "build drones", 2 = "build soldiers"   	
-    	
+    	public MapLocation[] friendlyTowerLocs;
     	
         public HQ(RobotController rc) {
             super(rc);
@@ -296,7 +298,7 @@ public class RobotPlayer {
 
             MapLocation rallyPoint;
             if (Clock.getRoundNum() < 1000) {
-                rallyPoint = new MapLocation();
+                rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations());
             }
             else {
                 rallyPoint = this.theirHQ;
