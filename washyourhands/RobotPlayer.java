@@ -46,6 +46,12 @@ public class RobotPlayer {
         } else if (rc.getType() == RobotType.DRONE) {
             myself = new Drone(rc);
             rc.broadcast(199, rc.getID());
+        } else if (rc.getType() == RobotType.MINERFACTORY) {
+        	myself = new MinerFactory(rc);
+        } else if (rc.getType() == RobotType.TANKFACTORY) {
+            myself = new TankFactory(rc);
+        } else if (rc.getType() == RobotType.AEROSPACELAB) {
+            myself = new AerospaceLab(rc);
         } else {
             myself = new BaseBot(rc);
         }
@@ -112,42 +118,6 @@ public class RobotPlayer {
 	    		}
 	    }
 
-        private void mineAndMove() throws GameActionException {
-        MapLocation toMove = rc.getLocation();
-        double ore = rc.senseOre(toMove);
-        MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
-        for(MapLocation ml : possibleBlocks){
-            if(rc.senseTerrainTile(ml) == TerrainTile.NORMAL && !rc.isLocationOccupied(ml) && rc.senseOre(ml) > ore){
-                toMove = ml;
-                ore = rc.senseOre(ml);
-            }
-        }
-
-        int robs = 0;
-        RobotInfo[] nearbyAllies = rc.senseNearbyRobots(toMove, 1, rc.getTeam());
-        for(RobotInfo ri : nearbyAllies){
-            if(ri.type == RobotType.MINER)
-                robs++;
-        }
-
-        if(ore >= rc.readBroadcast(6) && robs < rc.readBroadcast(9)){
-            rc.broadcast(6, (int)ore);
-            rc.broadcast(9, robs);
-            rc.broadcast(10, toMove.x);
-            rc.broadcast(11, toMove.y);
-        }
-        
-        if(toMove == rc.getLocation() && ore > 40){
-            rc.mine();
-        }
-        else if(ore > 40)
-            rc.move(rc.getLocation().directionTo(toMove));
-        else{
-            MapLocation bestBlock = new MapLocation(rc.readBroadcast(10), rc.readBroadcast(11));
-            rc.move(rc.getLocation().directionTo(bestBlock));
-        }
-    }
-
     	public boolean spawnUnit(RobotType type, Direction dir) throws GameActionException {
     		if(rc.isCoreReady()&&rc.canSpawn(dir, type)){
     			rc.spawn(dir, type);
@@ -156,28 +126,6 @@ public class RobotPlayer {
     		return false;
     	}
     	
-    	
-    	public MapLocation buildUnit(RobotType type, MapLocation buildLoc) throws GameActionException {
-        	Direction moveDir = getMoveDir(buildLoc);
-        	MapLocation myLoc = rc.getLocation();
-        	Direction buildDir = myLoc.directionTo(buildLoc);
-        	boolean adj = myLoc.isAdjacentTo(buildLoc);
-        	
-        	if(adj){
-        		System.out.println("imhere!");
-    			if(rc.getTeamOre()>type.oreCost && rc.isCoreReady() &&rc.canBuild(buildDir, type)){
-    				rc.build(buildDir,type);
-    				return null;
-    			} else{
-        			return buildLoc;
-        		}
-        	}
-        	else if(rc.isCoreReady() && rc.canMove(moveDir)){
-    			rc.move(moveDir);
-    			return buildLoc;
-    		}
-        	return buildLoc;
-    	}
 
         public Direction[] getDirectionsToward(MapLocation dest) {
             Direction toDest = rc.getLocation().directionTo(dest);
@@ -199,7 +147,7 @@ public class RobotPlayer {
         }
 
         public Direction getSpawnDirection(RobotType type) {
-            Direction[] dirs = getDirectionsToward(this.theirHQ);
+            Direction[] dirs = {Direction.NORTH, Direction.NORTH_WEST, Direction.EAST, Direction.NORTH_EAST, Direction.SOUTH_EAST, Direction.SOUTH, Direction.SOUTH_WEST, Direction.WEST};
             for (Direction d : dirs) {
                 if (rc.canSpawn(d, type)) {
                     return d;
@@ -234,36 +182,7 @@ public class RobotPlayer {
     			rc.transferSupplies((int)transfer, transferTo);
     		}
     	}
-        
-        public MapLocation getBuildLocation(RobotType type) throws GameActionException {
-            MapLocation loc = rc.senseHQLocation();
-            int r =1;
-            while(r<30){ //keep expanding out from the HQ till you find a valid location
-            	MapLocation[] nearLocs=MapLocation.getAllMapLocationsWithinRadiusSq(loc, r);
-            	for(MapLocation l : nearLocs){
-            		if(!rc.isLocationOccupied(l) && isValidBuildLoc(l)){
-            			return l;
-            		}
-            	}
-            	r+=1;
-            }
-            return null;
-        }
-
-        private boolean isValidBuildLoc(MapLocation loc) throws GameActionException {
-        	Direction[] directions = {Direction.NORTH,  Direction.EAST, Direction.SOUTH, Direction.WEST};
-			for(Direction dir: directions){
-				MapLocation newLoc=loc.add(dir);
-				if(newLoc!=rc.getLocation()){
-					if(rc.canSenseLocation(newLoc)){
-						if(rc.isLocationOccupied(newLoc) || rc.senseTerrainTile(newLoc) != TerrainTile.NORMAL){
-							return false;
-						}
-					}
-				}
-			}
-			return true;
-		}
+       
 
 		public RobotInfo[] getAllies() {
             RobotInfo[] allies = rc.senseNearbyRobots(Integer.MAX_VALUE, myTeam);
@@ -401,7 +320,8 @@ public class RobotPlayer {
                 if(Clock.getBytecodesLeft()<100)
                     return;
             }
-            ratio = (double)(totalNormal/totalProcessed);
+            if(totalProcessed != 0)
+            	ratio = (double)(totalNormal/totalProcessed);
             isFinished = true;
         }
 
@@ -447,14 +367,13 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	//builds in checkerboard pattern
-        	if(rc.readBroadcast(4)==0){
+        	if(rc.getTeamOre() > 500 && rc.readBroadcast(4)<1){
 	        		if(buildLoc==null)
 	        			buildLoc = getBuildLocation(RobotType.MINERFACTORY);
 	        		buildLoc = buildUnit(RobotType.MINERFACTORY, buildLoc);
 	        		if(buildLoc==null)
 	        			rc.broadcast(4, 1);
         	}
-        	
         	
         	if(rc.getTeamOre()>600 && rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>500 ){
         		if(buildLoc==null)
@@ -472,14 +391,14 @@ public class RobotPlayer {
         			rc.broadcast(10, rc.readBroadcast(10)+1);
         	}
         	
-        	if(rc.getTeamOre()>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1) ){
+        	if(rc.getTeamOre()>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.BARRACKS);
         		buildLoc = buildUnit(RobotType.BARRACKS, buildLoc);
         		if(buildLoc==null)
         			rc.broadcast(5, rc.readBroadcast(5)+1);
         	}
-        	if(rc.getTeamOre()>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.50 && Clock.getRoundNum()>1000 || rc.readBroadcast(7)<1) ){
+        	if(rc.getTeamOre()>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.50 && Clock.getRoundNum()>1000 || rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
         		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
@@ -487,7 +406,7 @@ public class RobotPlayer {
         			rc.broadcast(7, rc.readBroadcast(7)+1);
         	}
         	
-        	if(rc.getTeamOre()>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>1000 || rc.readBroadcast(8)<1) ){
+        	if(rc.getTeamOre()>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>1000 || rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.HELIPAD);
         		buildLoc = buildUnit(RobotType.HELIPAD, buildLoc);
@@ -505,6 +424,57 @@ public class RobotPlayer {
         	
             rc.yield();
         }
+        
+    	public MapLocation buildUnit(RobotType type, MapLocation buildLoc) throws GameActionException {
+        	Direction moveDir = getMoveDir(buildLoc);
+        	MapLocation myLoc = rc.getLocation();
+        	Direction buildDir = myLoc.directionTo(buildLoc);
+        	boolean adj = myLoc.isAdjacentTo(buildLoc);
+        	
+        	if(adj){
+    			if(rc.getTeamOre()>type.oreCost && rc.isCoreReady() &&rc.canBuild(buildDir, type)){
+    				rc.build(buildDir,type);
+    				return null;
+    			} else{
+        			return buildLoc;
+        		}
+        	}
+        	else if(rc.isCoreReady() && rc.canMove(moveDir)){
+    			rc.move(moveDir);
+    			return buildLoc;
+    		}
+        	return buildLoc;
+    	}
+    	
+        public MapLocation getBuildLocation(RobotType type) throws GameActionException {
+            MapLocation loc = rc.senseHQLocation();
+            int r =1;
+            while(r<30){ //keep expanding out from the HQ till you find a valid location
+            	MapLocation[] nearLocs=MapLocation.getAllMapLocationsWithinRadiusSq(loc, r);
+            	for(MapLocation l : nearLocs){
+            		if(!rc.isLocationOccupied(l) && isValidBuildLoc(l)){
+            			return l;
+            		}
+            	}
+            	r+=1;
+            }
+            return null;
+        }
+
+        private boolean isValidBuildLoc(MapLocation loc) throws GameActionException {
+        	Direction[] directions = {Direction.NORTH,  Direction.EAST, Direction.SOUTH, Direction.WEST};
+			for(Direction dir: directions){
+				MapLocation newLoc=loc.add(dir);
+				if(newLoc!=rc.getLocation()){
+					if(rc.canSenseLocation(newLoc)){
+						if(rc.isLocationOccupied(newLoc) || rc.senseTerrainTile(newLoc) != TerrainTile.NORMAL){
+							return false;
+						}
+					}
+				}
+			}
+			return true;
+		}
 
     }
 
@@ -514,10 +484,46 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            attackLeastHealthEnemy(getEnemiesInAttackingRange());
-            
+            mineAndMove();
+       
             rc.yield();
         }
+        
+        public void mineAndMove() throws GameActionException {
+        MapLocation toMove = rc.getLocation();
+        double ore = rc.senseOre(toMove);
+        MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
+        for(MapLocation ml : possibleBlocks){
+            if(rc.senseTerrainTile(ml) == TerrainTile.NORMAL && !rc.isLocationOccupied(ml) && rc.senseOre(ml) > ore){
+                toMove = ml;
+                ore = rc.senseOre(ml);
+            }
+        }
+
+        int robs = 0;
+        RobotInfo[] nearbyAllies = rc.senseNearbyRobots(toMove, 1, rc.getTeam());
+        for(RobotInfo ri : nearbyAllies){
+            if(ri.type == RobotType.MINER)
+                robs++;
+        }
+
+        if(ore >= rc.readBroadcast(6) && robs < rc.readBroadcast(9)){
+            rc.broadcast(6, (int)ore);
+            rc.broadcast(9, robs);
+            rc.broadcast(10, toMove.x);
+            rc.broadcast(11, toMove.y);
+        }
+        
+        if(toMove == rc.getLocation() && ore > 40){
+            rc.mine();
+        }
+        else if(ore > 40)
+            rc.move(rc.getLocation().directionTo(toMove));
+        else{
+            MapLocation bestBlock = new MapLocation(rc.readBroadcast(10), rc.readBroadcast(11));
+            rc.move(rc.getLocation().directionTo(bestBlock));
+        }
+    }
     }
 
     public static class Barracks extends BaseBot {
@@ -679,8 +685,11 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 60)
-                rc.spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
+            if(rc.getTeamOre() > 60){
+            	Direction dir = getSpawnDirection(RobotType.MINER);
+            	//if (dir!=null)
+            		//spawnUnit(RobotType.MINER, dir);
+            }
             rc.yield();
         }
     }
@@ -691,8 +700,11 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 250)
-                rc.spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+            if(rc.getTeamOre() > 250 ){
+            	Direction dir = getSpawnDirection(RobotType.TANK);
+        		if (dir!=null)
+        			spawnUnit(RobotType.TANK, dir);
+            }
             rc.yield();
         }
     }
@@ -703,8 +715,11 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 125)
-                rc.spawnUnit(RobotType.DRONE, getSpawnDirection(RobotType.DRONE));
+            if(rc.getTeamOre() > 125){
+            	Direction dir = getSpawnDirection(RobotType.MINER);
+            	if (dir!=null)
+            		spawnUnit(RobotType.DRONE, dir);
+            }
             rc.yield();
         }
     }
@@ -715,8 +730,11 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 400)
-                rc.spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+            if(rc.getTeamOre() > 400){
+            	Direction dir = getSpawnDirection(RobotType.LAUNCHER);
+        		if (dir!=null)
+        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+            }
             rc.yield();
         }
     }
