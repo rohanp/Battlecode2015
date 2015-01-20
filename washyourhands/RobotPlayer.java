@@ -5,8 +5,14 @@ import battlecode.common.*;
 import java.util.*;
 
 public class RobotPlayer {
-	static int maxBeavers=1;
+	static int maxBeavers=2;
+	static int maxMinerfactories=3;
 	static int maxMiners;
+	static int maxBarracks=2;
+	static int maxHelipads=1;
+	static int maxTankfactories=4;
+	static int maxAerospacelabs=20;
+	static int maxSupplydepots=30;
 	static Direction facing;
 	static Random rand;
 	static RobotController rc;
@@ -30,7 +36,9 @@ public class RobotPlayer {
         } else if (rc.getType() == RobotType.MINER) {
             myself = new Miner(rc);
         } else if (rc.getType() == RobotType.TANK) {
-            myself = new Miner(rc);
+            myself = new Tank(rc);
+        } else if (rc.getType() == RobotType.DRONE) {
+            myself = new Drone(rc);
         } else {
             myself = new BaseBot(rc);
         }
@@ -95,7 +103,6 @@ public class RobotPlayer {
 	    		if(rc.isCoreReady() && rc.canMove(facing)){
 	    			rc.move(facing);
 	    		}
-	    		
 	    }
 	    
 	    
@@ -110,6 +117,8 @@ public class RobotPlayer {
     		} 
     		return false;
     	}
+    	
+    	
     	public MapLocation buildUnit(RobotType type, MapLocation buildLoc) throws GameActionException {
         	Direction moveDir = getMoveDir(buildLoc);
         	MapLocation myLoc = rc.getLocation();
@@ -124,15 +133,12 @@ public class RobotPlayer {
     			} else{
         			return buildLoc;
         		}
-        		
         	}
         	else if(rc.isCoreReady() && rc.canMove(moveDir)){
     			rc.move(moveDir);
     			return buildLoc;
     		}
-        	
         	return buildLoc;
-    		
     	}
 
         public Direction[] getDirectionsToward(MapLocation dest) {
@@ -305,7 +311,7 @@ public class RobotPlayer {
         	if(rc.isWeaponReady()){
         		if(towers < 5){
         			RobotInfo[] enemies = getEnemiesInAttackingRange();
-        			attackMostHealthEnemy(enemies);
+        			attackLeastHealthEnemy(enemies);
         		}
         	}
         	
@@ -403,14 +409,65 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	//builds in checkerboard pattern
-        	if(rc.getTeamOre()>400){
+        	if(rc.readBroadcast(4)==0){
+	        		if(buildLoc==null)
+	        			buildLoc = getBuildLocation(RobotType.MINERFACTORY);
+	        		buildLoc = buildUnit(RobotType.MINERFACTORY, buildLoc);
+	        		if(buildLoc==null)
+	        			rc.broadcast(4, 1);
+        	}
+        	
+        	
+        	if(rc.getTeamOre()>600 && rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>500 ){
         		if(buildLoc==null)
-        			buildLoc = getBuildLocation(RobotType.HANDWASHSTATION);
-        		buildLoc = buildUnit(RobotType.HANDWASHSTATION, buildLoc);
+        			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
+        		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
+        		if(buildLoc==null)
+        			rc.broadcast(5, rc.readBroadcast(11)+1);
+        	}
+        	
+        	if(rc.getTeamOre()>300 && Clock.getRoundNum()>1000 && rand.nextDouble()>.85 && rc.readBroadcast(10)<maxSupplydepots){
+        		if(buildLoc==null)
+        			buildLoc = getBuildLocation(RobotType.SUPPLYDEPOT);
+        		buildLoc = buildUnit(RobotType.SUPPLYDEPOT, buildLoc);
+        		if(buildLoc==null)
+        			rc.broadcast(10, rc.readBroadcast(10)+1);
+        	}
+        	
+        	if(rc.getTeamOre()>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1) ){
+        		if(buildLoc==null)
+        			buildLoc = getBuildLocation(RobotType.BARRACKS);
+        		buildLoc = buildUnit(RobotType.BARRACKS, buildLoc);
+        		if(buildLoc==null)
+        			rc.broadcast(5, rc.readBroadcast(5)+1);
+        	}
+        	if(rc.getTeamOre()>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.50 && Clock.getRoundNum()>1000 || rc.readBroadcast(7)<1) ){
+        		if(buildLoc==null)
+        			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
+        		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
+        		if(buildLoc==null)
+        			rc.broadcast(7, rc.readBroadcast(7)+1);
+        	}
+        	
+        	if(rc.getTeamOre()>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>1000 || rc.readBroadcast(8)<1) ){
+        		if(buildLoc==null)
+        			buildLoc = getBuildLocation(RobotType.HELIPAD);
+        		buildLoc = buildUnit(RobotType.HELIPAD, buildLoc);
+        		if(buildLoc==null)
+        			rc.broadcast(8, rc.readBroadcast(8)+1);
+        	}
+        	
+        	if(rc.getTeamOre()>500 && (rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.85 || rc.readBroadcast(11)<1) ){
+        		if(buildLoc==null)
+        			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
+        		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
+        		if(buildLoc==null)
+        			rc.broadcast(11, rc.readBroadcast(11)+1);
         	}
         	
             rc.yield();
         }
+
     }
 
     public static class Miner extends BaseBot {
@@ -420,6 +477,7 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
             attackLeastHealthEnemy(getEnemiesInAttackingRange());
+            
             rc.yield();
         }
     }
@@ -440,6 +498,7 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
+        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
             rc.yield();
         }
     }
@@ -450,6 +509,29 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
+        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+            rc.yield();
+        }
+    }
+    
+    public static class Tank extends BaseBot {
+        public Tank(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+            rc.yield();
+        }
+    }
+    
+    public static class Drone extends BaseBot {
+        public Drone(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
             rc.yield();
         }
     }
