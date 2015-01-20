@@ -97,9 +97,18 @@ public class RobotPlayer {
         private static void mineAndMove() throws GameActionException {
             if(rc.canMove(Direction.NORTH)&&rc.canMove(Direction.SOUTH)&&rc.canMove(Direction.EAST)&&rc.canMove(Direction.WEST)){
                 //if (Clock.getRoundNum() < 1000)
-                if(rc.senseOre(rc.getLocation()) > 40){
-                    rc.mine();
+                MapLocation toMove = rc.getLocation().add(Direction.NORTH);
+                double ore = rc.senseOre(toMove);
+                MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
+                for(MapLocation ml : possibleBlocks){
+                    if(rc.senseOre(ml) > ore){
+                        toMove = ml;
+                    }
                 }
+                if(toMove != rc.getLocation())
+                    rc.mine();
+                else
+                    rc.move(rc.getLocation().directionTo(toMove));
             }
             else{//no ore, so look for ore
                 moveRandomly();
@@ -311,7 +320,7 @@ public class RobotPlayer {
         			rc.broadcast(2, rc.readBroadcast(2) + 1);
         		}
         	}
-            
+
             MapLocation rallyPoint;
             if (Clock.getRoundNum() < 1000) {
                 rallyPoint = new MapLocation( (this.myHQ.x + this.theirHQ.x) / 2,
