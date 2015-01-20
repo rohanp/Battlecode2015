@@ -845,10 +845,23 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 60){
-            	Direction dir = getSpawnDirection(RobotType.MINER);
-            	//if (dir!=null)
-            		//spawnUnit(RobotType.MINER, dir);
+            if(movingThingyOre > 60){
+            	if(movingThingyOre > 1500){
+            		Direction dir = getSpawnDirection(RobotType.MINER);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
+	        			movingThingyOre-=60;
+	        		}
+            	}
+            	else{
+            		if(Math.random() > 0.5){
+		            	Direction dir = getSpawnDirection(RobotType.MINER);
+		        		if (dir!=null){
+		        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
+		        			movingThingyOre-=60;
+		        		}
+            		}
+            	}
             }
             rc.yield();
         }
@@ -860,25 +873,41 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 250 ){
-            	Direction dir = getSpawnDirection(RobotType.TANK);
-        		if (dir!=null)
-        			spawnUnit(RobotType.TANK, dir);
+        	if(movingThingyOre > 250){
+            	if(movingThingyOre > 1500){
+            		Direction dir = getSpawnDirection(RobotType.TANK);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+	        			movingThingyOre-=250;
+	        		}
+            	}
+            	else{
+            		if(Math.random() > 0.3){
+		            	Direction dir = getSpawnDirection(RobotType.TANK);
+		        		if (dir!=null){
+		        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+		        			movingThingyOre-=250;
+		        		}
+            		}
+            	}
             }
             rc.yield();
         }
     }
 
-    public static class Helipad extends BaseBot {
+    public static class Helipad extends BaseBot { //2
         public Helipad(RobotController rc) {
             super(rc);
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 125){
-            	Direction dir = getSpawnDirection(RobotType.MINER);
-            	if (dir!=null)
+            if(rc.readBroadcast(71) < 2 && movingThingyOre > 125){
+            	Direction dir = getSpawnDirection(RobotType.DRONE);
+            	if (dir!=null){
             		spawnUnit(RobotType.DRONE, dir);
+            		rc.broadcast(71, rc.readBroadcast(71)+1);
+            		movingThingyOre-=125;
+            	}
             }
             rc.yield();
         }
@@ -890,10 +919,23 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(rc.getTeamOre() > 400){
-            	Direction dir = getSpawnDirection(RobotType.LAUNCHER);
-        		if (dir!=null)
-        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+            if(movingThingyOre > 400){
+            	if(movingThingyOre > 1500){
+            		Direction dir = getSpawnDirection(RobotType.LAUNCHER);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+	        			movingThingyOre-=400;
+	        		}
+            	}
+            	else{
+            		if(Math.random() < 0.9){
+		            	Direction dir = getSpawnDirection(RobotType.LAUNCHER);
+		        		if (dir!=null){
+		        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+		        			movingThingyOre-=400;
+		        		}
+            		}
+            	}
             }
             rc.yield();
         }
