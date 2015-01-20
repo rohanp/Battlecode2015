@@ -566,4 +566,52 @@ public class RobotPlayer {
             rc.yield();
         }
     }
+
+    public static class MinerFactory extends BaseBot {
+        public MinerFactory(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+            if(rc.getTeamOre() > 60)
+                rc.spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
+            rc.yield();
+        }
+    }
+
+    public static class TankFactory extends BaseBot {
+        public TankFactory(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+            if(rc.getTeamOre() > 250)
+                rc.spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+            rc.yield();
+        }
+    }
+
+    public static class Helipad extends BaseBot {
+        public Helipad(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+            if(rc.getTeamOre() > 125)
+                rc.spawnUnit(RobotType.DRONE, getSpawnDirection(RobotType.DRONE));
+            rc.yield();
+        }
+    }
+
+    public static class AerospaceLab extends BaseBot {
+        public AerospaceLab(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+            if(rc.getTeamOre() > 400)
+                rc.spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+            rc.yield();
+        }
+    }
 }
