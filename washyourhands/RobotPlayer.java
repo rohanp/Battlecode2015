@@ -5,6 +5,8 @@ import battlecode.common.*;
 
 import java.util.*;
 
+
+//physics quiz!
 public class RobotPlayer {
 	static int maxBeavers=2;
 	static int maxMinerfactories=3;
