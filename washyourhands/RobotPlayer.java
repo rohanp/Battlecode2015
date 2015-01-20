@@ -75,8 +75,9 @@ public class RobotPlayer {
         protected MapLocation myHQ, theirHQ;
         protected Team myTeam, theirTeam;
         static int towers;
-        static double buildingOre;
-        static double movingThingyOre;
+        double buildingOre;
+        double movingThingyOre;
+        public static MapLocation[] friendlyTowerLocs;
 
         public BaseBot(RobotController rc) {
             this.rc = rc;
@@ -85,6 +86,7 @@ public class RobotPlayer {
             this.myTeam = rc.getTeam();
             this.theirTeam = this.myTeam.opponent();
             BaseBot.towers=rc.senseTowerLocations().length;
+            BaseBot.friendlyTowerLocs=rc.senseTowerLocations();
         }
         
 
@@ -273,8 +275,12 @@ public class RobotPlayer {
         public void beginningOfTurn() {
             if (rc.senseEnemyHQLocation() != null) {
                 this.theirHQ = rc.senseEnemyHQLocation();
-                this.buildingOre= ((double) rc.getTeamOre())*.5;
-                this.movingThingyOre= ((double) rc.getTeamOre())*.5;
+                if(Clock.getRoundNum()<500){
+	                this.buildingOre= ((double) rc.getTeamOre())*.5;
+	                this.movingThingyOre= ((double) rc.getTeamOre())*.5;
+                }
+                this.buildingOre= ((double) rc.getTeamOre())*.95;
+                this.movingThingyOre= ((double) rc.getTeamOre())*.05;
             }
             
         }
@@ -303,18 +309,26 @@ public class RobotPlayer {
         public static boolean isFinished;
 
         public static int strategy; // 0 = "defend", 1 = "build drones", 2 = "build soldiers"   	
-    	public MapLocation[] friendlyTowerLocs;
     	
         public HQ(RobotController rc) {
             super(rc);
         }
 
         public void execute() throws GameActionException {
-        	if(rc.isWeaponReady()){
-        		if(towers < 5){
-        			RobotInfo[] enemies = getEnemiesInAttackingRange();
-        			attackLeastHealthEnemy(enemies);
-        		}
+        	friendlyTowerLocs=rc.senseTowerLocations();
+        	
+        	RobotInfo[] enemies = getEnemiesInAttackingRange();
+        	
+        	if(enemies.length>0){
+		        	if(rc.isWeaponReady()){
+		        		if(friendlyTowerLocs.length>=5)
+		        			attackClump();
+		        		else
+		        			attackLeastHealthEnemy(enemies);
+		        		rc.broadcast(91,1);
+	        	} else{
+	        		rc.broadcast(91, 0);
+	        	}
         	}
         	
         	if(rc.readBroadcast(2)<maxBeavers){
@@ -323,25 +337,25 @@ public class RobotPlayer {
         		}
         	}
 
-            MapLocation rallyPoint;
-            
-            
+            MapLocation rallyPoint=null;
             
             if (numFighters()>50 || Clock.getRoundNum()>1700 && numFighters()>30){   // can attack HQ
             	rallyPoint = this.theirHQ;
             }
             else if(numFighters()>20){ //can attack Tower
             	MapLocation[] enemyTowers =rc.senseEnemyTowerLocations();
-            	if(enemyTowers.length>0)
+            	if(enemyTowers.length>0){
             		rallyPoint = getClosestToHQ(enemyTowers);
-            	else
-            		rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations()); 
+            	}
+            } 
+            
+            if(rallyPoint!=null){
+	            rc.broadcast(0, rallyPoint.x);
+	            rc.broadcast(1, rallyPoint.y);
+            } else{
+	            rc.broadcast(0, 0);
+	            rc.broadcast(1, 0);
             }
-            else {
-            	rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations()); 	
-            }
-            rc.broadcast(0, rallyPoint.x);
-            rc.broadcast(1, rallyPoint.y);
             
             if(!isFinished){
                 analyzeMap();
@@ -354,7 +368,12 @@ public class RobotPlayer {
             rc.yield();
         }
         
-        public int numFighters(){
+        private void attackClump() {
+			 
+			
+		}
+
+		public int numFighters(){
         	RobotInfo[] myRobots = rc.senseNearbyRobots(999999, myTeam);
         	int numFighters = 0;
 			for (RobotInfo r : myRobots) {
@@ -469,35 +488,43 @@ public class RobotPlayer {
         		}
         	}
         	
-        	if(rc.getTeamOre()>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
+        	if(buildingOre>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.BARRACKS);
         		buildLoc = buildUnit(RobotType.BARRACKS, buildLoc);
-        		if(buildLoc==null)
+        		if(buildLoc==null){
         			rc.broadcast(5, rc.readBroadcast(5)+1);
+        			buildingOre-=300;
+        		}
         	}
-        	if(rc.getTeamOre()>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.50 && Clock.getRoundNum()>1000 || rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) ){
+        	if(buildingOre>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.50 && Clock.getRoundNum()>1000 || rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
         		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
-        		if(buildLoc==null)
+        		if(buildLoc==null){
         			rc.broadcast(7, rc.readBroadcast(7)+1);
+        			buildingOre-=500;
+        		}
         	}
         	
-        	if(rc.getTeamOre()>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>1000 || rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) ){
+        	if(buildingOre>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>1000 || rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.HELIPAD);
         		buildLoc = buildUnit(RobotType.HELIPAD, buildLoc);
-        		if(buildLoc==null)
+        		if(buildLoc==null){
         			rc.broadcast(8, rc.readBroadcast(8)+1);
+        			buildingOre-=300;
+        		}
         	}
         	
-        	if(rc.getTeamOre()>500 && (rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.85 || rc.readBroadcast(11)<1) ){
+        	if(buildingOre>500 && (rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.85 || rc.readBroadcast(11)<1) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
         		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
-        		if(buildLoc==null)
+        		if(buildLoc==null){
         			rc.broadcast(11, rc.readBroadcast(11)+1);
+        			buildingOre-=500;
+        		}
         	}
         	
             rc.yield();
@@ -616,8 +643,17 @@ public class RobotPlayer {
     }
 
     public static class Soldier extends BaseBot {
+    	private MapLocation defending;
+    	
         public Soldier(RobotController rc) {
             super(rc);
+            MapLocation[] friendlyTowerLocs = rc.senseTowerLocations();
+            int index = 0;
+            index = (int)(rand.nextDouble()*((double)friendlyTowerLocs.length));
+            if(friendlyTowerLocs.length>0)
+            	defending = friendlyTowerLocs[index];
+            else
+            	defending = this.myHQ;
         }
 
         public void execute() throws GameActionException {
@@ -632,9 +668,15 @@ public class RobotPlayer {
             else if (rc.isCoreReady()) {
                 int rallyX = rc.readBroadcast(0);
                 int rallyY = rc.readBroadcast(1);
-                MapLocation rallyPoint = new MapLocation(rallyX, rallyY);
-
-                Direction newDir = getMoveDir(rallyPoint);
+                
+                MapLocation moveTo;
+                
+                if(rallyX==0 && rallyY==0)
+                	moveTo= new MapLocation(rallyX, rallyY);
+                else
+                	moveTo = defending;
+                	
+                Direction newDir = getMoveDir(moveTo);
 
                 if (newDir != null) {
                 	//add move safely method
@@ -651,14 +693,71 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+        	if(rc.isWeaponReady() && !rc.isCoreReady())
+        		attackLeastHealthEnemy(getEnemiesInAttackingRange());
         }
         
     }
     
     public static class Tank extends BaseBot {
+    	private MapLocation defending;
+    	
         public Tank(RobotController rc) {
             super(rc);
+            MapLocation[] friendlyTowerLocs = rc.senseTowerLocations();
+            int index = 0;
+            index = (int)(rand.nextDouble()*((double)friendlyTowerLocs.length));
+            if(friendlyTowerLocs.length>0)
+            	defending = friendlyTowerLocs[index];
+            else
+            	defending = this.myHQ;
+        }
+
+        public void execute() throws GameActionException {
+            RobotInfo[] enemies = getEnemiesInAttackingRange();
+
+
+            if (enemies.length > 0) {
+                //attack!
+                if (rc.isWeaponReady()) {
+                    attackLeastHealthEnemy(enemies);
+                }
+            }
+            else if (rc.isCoreReady()) {
+                int rallyX = rc.readBroadcast(0);
+                int rallyY = rc.readBroadcast(1);
+                
+                MapLocation moveTo;
+                
+                if (rallyX!=0 && rallyY!=0)
+                	moveTo= new MapLocation(rallyX, rallyY);
+                else{
+                	moveTo=defending;
+                }
+                	
+                Direction newDir = getMoveDir(moveTo);
+
+                if (newDir != null) {
+                	//add move safely method
+                    rc.move(newDir);
+                }
+            }
+            rc.yield();
+        }
+    }
+    
+    public static class Launcher extends BaseBot {
+    	private MapLocation defending;
+        public Launcher(RobotController rc) {
+            super(rc);
+            MapLocation[] friendlyTowerLocs = rc.senseTowerLocations();
+            System.out.println(friendlyTowerLocs);
+            int index = 0;
+            index = (int)(rand.nextDouble()*((double)friendlyTowerLocs.length));
+            if(friendlyTowerLocs.length>0)
+            	defending = friendlyTowerLocs[index];
+            else
+            	defending = this.myHQ;
         }
 
         public void execute() throws GameActionException {
@@ -673,40 +772,18 @@ public class RobotPlayer {
             else if (rc.isCoreReady()) {
                 int rallyX = rc.readBroadcast(0);
                 int rallyY = rc.readBroadcast(1);
-                MapLocation rallyPoint = new MapLocation(rallyX, rallyY);
-
-                Direction newDir = getMoveDir(rallyPoint);
-
-                if (newDir != null) {
-                    rc.move(newDir);
-                }
-            }
-            rc.yield();
-        }
-    }
-    
-    public static class Launcher extends BaseBot {
-        public Launcher(RobotController rc) {
-            super(rc);
-        }
-
-        public void execute() throws GameActionException {
-            RobotInfo[] enemies = getEnemiesInAttackingRange();
-
-            if (enemies.length > 0) {
-                //attack!
-                if (rc.isWeaponReady()) {
-                    attackMostHealthEnemy(enemies);
-                }
-            }
-            else if (rc.isCoreReady()) {
-                int rallyX = rc.readBroadcast(0);
-                int rallyY = rc.readBroadcast(1);
-                MapLocation rallyPoint = new MapLocation(rallyX, rallyY);
-
-                Direction newDir = getMoveDir(rallyPoint);
+                
+                MapLocation moveTo;
+                
+                if(rallyX==0 && rallyY==0)
+                	moveTo= new MapLocation(rallyX, rallyY);
+                else
+                	moveTo = defending;
+                	
+                Direction newDir = getMoveDir(moveTo);
 
                 if (newDir != null) {
+                	//add move safely method
                     rc.move(newDir);
                 }
             }
@@ -715,8 +792,12 @@ public class RobotPlayer {
     }
 
     public static class Drone extends BaseBot {
+    	private MapLocation defending;
+    	
         public Drone(RobotController rc) {
             super(rc);
+            int index = (int)(rand.nextDouble()*((double)friendlyTowerLocs.length));
+            defending = friendlyTowerLocs[index];
         }
 
         public void execute() throws GameActionException {
