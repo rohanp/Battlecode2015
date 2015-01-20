@@ -27,6 +27,10 @@ public class RobotPlayer {
             myself = new Soldier(rc);
         } else if (rc.getType() == RobotType.TOWER) {
             myself = new Tower(rc);
+        } else if (rc.getType() == RobotType.MINER) {
+            myself = new Miner(rc);
+        } else if (rc.getType() == RobotType.TANK) {
+            myself = new Miner(rc);
         } else {
             myself = new BaseBot(rc);
         }
@@ -93,18 +97,6 @@ public class RobotPlayer {
 	    		}
 	    		
 	    }
-
-        private static void mineAndMove() throws GameActionException {
-            if(rc.canMove(Direction.NORTH)&&rc.canMove(Direction.SOUTH)&&rc.canMove(Direction.EAST)&&rc.canMove(Direction.WEST)){
-                //if (Clock.getRoundNum() < 1000)
-                if(rc.senseOre(rc.getLocation()) > 40){
-                    rc.mine();
-                }
-            }
-            else{//no ore, so look for ore
-                moveRandomly();
-            }
-        }
 	    
 	    
     	public Direction getRandDir() {
@@ -294,6 +286,17 @@ public class RobotPlayer {
     }
 
     public static class HQ extends BaseBot {
+        public static int xMin, xMax, yMin, yMax;
+        public static int xpos, ypos;
+        public static int totalNormal, totalVoid, totalProcessed;
+        public static int towerThreat;
+
+        public static double ratio;
+        public static boolean isFinished;
+
+        public static int strategy; // 0 = "defend", 1 = "build drones", 2 = "build soldiers"   	
+    	
+    	
         public HQ(RobotController rc) {
             super(rc);
         }
@@ -335,8 +338,8 @@ public class RobotPlayer {
         }
 
         public void analyzeMap(){
-            while(yPos < yMax + 1){
-                TerrainTile t = rc.senseTerrainTile(new MapLocation(xPos,yPos));
+            while(ypos < yMax + 1){
+                TerrainTile t = rc.senseTerrainTile(new MapLocation(xpos,ypos));
                 if(t==TerrainTile.NORMAL){
                     totalNormal++;
                     totalProcessed++;
@@ -345,10 +348,10 @@ public class RobotPlayer {
                     totalVoid++;
                     totalProcessed++;
                 }
-                xPos++;
-                if(xPos == xMax+1){
-                    xPos = xMin;
-                    yPos++;
+                xpos++;
+                if(xpos == xMax+1){
+                    xpos = xMin;
+                    ypos++;
                 }
                 
                 if(Clock.getBytecodesLeft()<100)
@@ -416,8 +419,7 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            attackLeastHealthEnemy();
-            mineAndMove();
+            attackLeastHealthEnemy(getEnemiesInAttackingRange());
             rc.yield();
         }
     }
