@@ -2,8 +2,8 @@ package washyourhands;
 
 import battlecode.common.*;
 
+
 import java.util.*;
-import java.utils.array;
 
 public class RobotPlayer {
 	static int maxBeavers=2;
@@ -198,12 +198,27 @@ public class RobotPlayer {
         }
         
         public MapLocation getClosestToEnemyHQ(MapLocation[] locs){
-        	int min = 9999;
+        	int min = 9999999;
         	int dist;
-        	MapLocation minLoc;
+        	MapLocation minLoc=null;
         	for (int i=0; i<locs.length; i++){
         		MapLocation myLoc=locs[i];
         		dist = locs[i].distanceSquaredTo(this.theirHQ);
+        		if(dist<min){
+        			min=dist;
+					minLoc=myLoc;
+        		}
+        	}
+        	return minLoc;
+        }
+        
+        public MapLocation getClosestToHQ(MapLocation[] locs){
+        	int min = 9999999;
+        	int dist;
+        	MapLocation minLoc=null;
+        	for (int i=0; i<locs.length; i++){
+        		MapLocation myLoc=locs[i];
+        		dist = locs[i].distanceSquaredTo(this.myHQ);
         		if(dist<min){
         			min=dist;
 					minLoc=myLoc;
@@ -220,6 +235,11 @@ public class RobotPlayer {
             double minEnergon = Double.MAX_VALUE;
             MapLocation toAttack = null;
             for (RobotInfo info : enemies) {
+            	if(info.type==RobotType.TOWER){
+            		toAttack=info.location;
+            		break;
+            	}
+            		
                 if (info.health < minEnergon) {
                     toAttack = info.location;
                     minEnergon = info.health;
@@ -297,11 +317,23 @@ public class RobotPlayer {
         	}
 
             MapLocation rallyPoint;
-            if (Clock.getRoundNum() < 1000) {
-                rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations());
+            
+            
+            
+            if (rc.readBroadcast(21)>0){   // can attack HQ
+            	rallyPoint = this.theirHQ;
+            	rc.broadcast(21,0);
+            }
+            else if(rc.readBroadcast(20)>0){ //can attack Tower
+            	MapLocation[] enemyTowers =rc.senseEnemyTowerLocations();
+            	if(enemyTowers.length>0)
+            		rallyPoint = getClosestToHQ(enemyTowers);
+            	else
+            		rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations()); 
+            	rc.broadcast(20, 0);
             }
             else {
-                rallyPoint = this.theirHQ;
+            	rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations()); 	
             }
             rc.broadcast(0, rallyPoint.x);
             rc.broadcast(1, rallyPoint.y);
@@ -590,8 +622,13 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+        	if(getAllies().length>20)
+        		rc.broadcast(20, 1); //enough to attack a tower
+        	if(getAllies().length>50)
+        		rc.broadcast(21, 1);; // enough to attack HQ
             rc.yield();
         }
+        
     }
     
     public static class Tank extends BaseBot {
@@ -634,7 +671,7 @@ public class RobotPlayer {
             if (enemies.length > 0) {
                 //attack!
                 if (rc.isWeaponReady()) {
-                    attackLeastHealthEnemy(enemies);
+                    attackMostHealthEnemy(enemies);
                 }
             }
             else if (rc.isCoreReady()) {
