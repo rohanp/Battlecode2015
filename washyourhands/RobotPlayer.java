@@ -93,6 +93,18 @@ public class RobotPlayer {
 	    		}
 	    		
 	    }
+
+        private static void mineAndMove() throws GameActionException {
+            if(rc.canMove(Direction.NORTH)&&rc.canMove(Direction.SOUTH)&&rc.canMove(Direction.EAST)&&rc.canMove(Direction.WEST)){
+                //if (Clock.getRoundNum() < 1000)
+                if(rc.senseOre(rc.getLocation()) > 40){
+                    rc.mine();
+                }
+            }
+            else{//no ore, so look for ore
+                moveRandomly();
+            }
+        }
 	    
 	    
     	public Direction getRandDir() {
@@ -299,7 +311,84 @@ public class RobotPlayer {
         			rc.broadcast(2, rc.readBroadcast(2) + 1);
         		}
         	}
+            
+            MapLocation rallyPoint;
+            if (Clock.getRoundNum() < 1000) {
+                rallyPoint = new MapLocation( (this.myHQ.x + this.theirHQ.x) / 2,
+                                              (this.myHQ.y + this.theirHQ.y) / 2);
+            }
+            else {
+                rallyPoint = this.theirHQ;
+            }
+            rc.broadcast(0, rallyPoint.x);
+            rc.broadcast(1, rallyPoint.y);
+            
+            if(!isFinished){
+                analyzeMap();
+                analyzeTowers();
+            }
+            else{
+                chooseStrategy();
+            }
+            
             rc.yield();
+        }
+
+        public void analyzeMap(){
+            while(yPos < yMax + 1){
+                TerrainTile t = rc.senseTerrainTile(new MapLocation(xPos,yPos));
+                if(t==TerrainTile.NORMAL){
+                    totalNormal++;
+                    totalProcessed++;
+                }
+                else if(t==TerrainTile.VOID){
+                    totalVoid++;
+                    totalProcessed++;
+                }
+                xPos++;
+                if(xPos == xMax+1){
+                    xPos = xMin;
+                    yPos++;
+                }
+                
+                if(Clock.getBytecodesLeft()<100)
+                    return;
+            }
+            ratio = (double)(totalNormal/totalProcessed);
+            isFinished = true;
+        }
+
+        public void analyzeTowers(){
+            MapLocation[] towers = rc.senseEnemyTowerLocations();
+            
+            for(int i = 0; i < towers.length; ++i){
+                MapLocation tower = towers[i];
+                
+                if((xMin <= tower.x && tower.x <= xMax) && (yMin <= tower.y && tower.y <=yMax) || tower.distanceSquaredTo(this.theirHQ) <= 50){
+                    for(int j = 0; j < towers.length; ++j){
+                        if(towers[j].distanceSquaredTo(tower) <= 50)
+                            towerThreat++;
+                    }
+                }
+            }
+        }
+
+        public void chooseStrategy() throws GameActionException{
+            if(towerThreat >= 10){
+                //defensive
+                strategy = 0;
+            }
+            else{
+                if(ratio <= 0.05){
+                    //build drones
+                    strategy = 1;
+                }
+                else{
+                    //build soldiers
+                    strategy = 2;
+                }
+            }
+            rc.broadcast(100, strategy);
         }
     }
 
@@ -317,6 +406,18 @@ public class RobotPlayer {
         		buildLoc = buildUnit(RobotType.HANDWASHSTATION, buildLoc);
         	}
         	
+            rc.yield();
+        }
+    }
+
+    public static class Miner extends BaseBot {
+        public Miner(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+            attackLeastHealthEnemy();
+            mineAndMove();
             rc.yield();
         }
     }
