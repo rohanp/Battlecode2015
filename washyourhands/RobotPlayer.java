@@ -17,8 +17,14 @@ public class RobotPlayer {
 	static Random rand;
 	static RobotController rc;
 	
+	public static boolean needsSupplier(RobotController rc) throws GameActionException {
+		if (rc.readBroadcast(200) == 0) {
+			return true;
+		}
+		return false;
+	}
 	
-	public static void run(RobotController myrc) {
+	public static void run(RobotController myrc) throws GameActionException {
         BaseBot myself;
 		rc=myrc;
 		rand = new Random(rc.getID());
@@ -39,6 +45,7 @@ public class RobotPlayer {
             myself = new Tank(rc);
         } else if (rc.getType() == RobotType.DRONE) {
             myself = new Drone(rc);
+            rc.broadcast(199, rc.getID());
         } else {
             myself = new BaseBot(rc);
         }
@@ -105,7 +112,7 @@ public class RobotPlayer {
 	    		}
 	    }
 
-        private static void mineAndMove() throws GameActionException {
+        private void mineAndMove() throws GameActionException {
         MapLocation toMove = rc.getLocation();
         double ore = rc.senseOre(toMove);
         MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
@@ -529,7 +536,26 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+            RobotInfo[] enemies = getEnemiesInAttackingRange();
+
+            if (enemies.length > 0) {
+                //attack!
+                if (rc.isWeaponReady()) {
+                    attackLeastHealthEnemy(enemies);
+                }
+            }
+            else if (rc.isCoreReady()) {
+                int rallyX = rc.readBroadcast(0);
+                int rallyY = rc.readBroadcast(1);
+                MapLocation rallyPoint = new MapLocation(rallyX, rallyY);
+
+                Direction newDir = getMoveDir(rallyPoint);
+
+                if (newDir != null) {
+                	//add move safely method
+                    rc.move(newDir);
+                }
+            }
             rc.yield();
         }
     }
@@ -551,18 +577,98 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+            RobotInfo[] enemies = getEnemiesInAttackingRange();
+
+            if (enemies.length > 0) {
+                //attack!
+                if (rc.isWeaponReady()) {
+                    attackLeastHealthEnemy(enemies);
+                }
+            }
+            else if (rc.isCoreReady()) {
+                int rallyX = rc.readBroadcast(0);
+                int rallyY = rc.readBroadcast(1);
+                MapLocation rallyPoint = new MapLocation(rallyX, rallyY);
+
+                Direction newDir = getMoveDir(rallyPoint);
+
+                if (newDir != null) {
+                    rc.move(newDir);
+                }
+            }
             rc.yield();
         }
     }
     
+    public static class Launcher extends BaseBot {
+        public Launcher(RobotController rc) {
+            super(rc);
+        }
+
+        public void execute() throws GameActionException {
+            RobotInfo[] enemies = getEnemiesInAttackingRange();
+
+            if (enemies.length > 0) {
+                //attack!
+                if (rc.isWeaponReady()) {
+                    attackLeastHealthEnemy(enemies);
+                }
+            }
+            else if (rc.isCoreReady()) {
+                int rallyX = rc.readBroadcast(0);
+                int rallyY = rc.readBroadcast(1);
+                MapLocation rallyPoint = new MapLocation(rallyX, rallyY);
+
+                Direction newDir = getMoveDir(rallyPoint);
+
+                if (newDir != null) {
+                    rc.move(newDir);
+                }
+            }
+            rc.yield();
+        }
+    }
+
     public static class Drone extends BaseBot {
         public Drone(RobotController rc) {
             super(rc);
         }
 
         public void execute() throws GameActionException {
-        	attackLeastHealthEnemy(getEnemiesInAttackingRange());
+            int queueStart = rc.readBroadcast(298), queueEnd = rc.readBroadcast(299);
+
+            if (rc.isCoreReady()) {
+                if (queueStart != queueEnd && rc.getSupplyLevel() > 1000) {
+                    RobotInfo[] allies = getAllies();
+
+                    int target = rc.readBroadcast(queueStart);
+
+                    for (int i=0; i<allies.length; ++i) {
+                        if (allies[i].ID == target) {
+                            if (rc.getLocation().distanceSquaredTo(allies[i].location) <= GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED) {
+                                rc.transferSupplies(10000, allies[i].location);
+                                rc.broadcast(298, queueStart+1);
+                            }
+                            else {
+                                Direction toGoDir = getMoveDir(allies[i].location);
+
+                                if (toGoDir != null) {
+                                    rc.move(toGoDir);
+                                }
+                            }
+                            break;
+                        }
+                    }
+                }
+                if (rc.getSupplyLevel() <= 1000) {
+                    Direction toGoDir = getMoveDir(this.myHQ);
+
+                    if (toGoDir != null) {
+                        rc.move(toGoDir);
+                    }
+                }
+            }
+            
             rc.yield();
         }
     }
