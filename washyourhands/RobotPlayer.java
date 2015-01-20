@@ -2,11 +2,9 @@ package washyourhands;
 
 import battlecode.common.*;
 
-
 import java.util.*;
 
 
-//physics quiz!
 public class RobotPlayer {
 	static int maxBeavers=2;
 	static int maxMinerfactories=3;
@@ -77,6 +75,8 @@ public class RobotPlayer {
         protected MapLocation myHQ, theirHQ;
         protected Team myTeam, theirTeam;
         static int towers;
+        static double buildingOre;
+        static double movingThingyOre;
 
         public BaseBot(RobotController rc) {
             this.rc = rc;
@@ -86,6 +86,8 @@ public class RobotPlayer {
             this.theirTeam = this.myTeam.opponent();
             BaseBot.towers=rc.senseTowerLocations().length;
         }
+        
+
         
 	    public void moveRandomly() throws GameActionException {
 	    		if(rand.nextDouble()<0.05){
@@ -271,7 +273,10 @@ public class RobotPlayer {
         public void beginningOfTurn() {
             if (rc.senseEnemyHQLocation() != null) {
                 this.theirHQ = rc.senseEnemyHQLocation();
+                this.buildingOre= ((double) rc.getTeamOre())*.5;
+                this.movingThingyOre= ((double) rc.getTeamOre())*.5;
             }
+            
         }
 
         public void endOfTurn() {
@@ -322,17 +327,15 @@ public class RobotPlayer {
             
             
             
-            if (rc.readBroadcast(21)>0){   // can attack HQ
+            if (numFighters()>50 || Clock.getRoundNum()>1700 && numFighters()>30){   // can attack HQ
             	rallyPoint = this.theirHQ;
-            	rc.broadcast(21,0);
             }
-            else if(rc.readBroadcast(20)>0){ //can attack Tower
+            else if(numFighters()>20){ //can attack Tower
             	MapLocation[] enemyTowers =rc.senseEnemyTowerLocations();
             	if(enemyTowers.length>0)
             		rallyPoint = getClosestToHQ(enemyTowers);
             	else
             		rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations()); 
-            	rc.broadcast(20, 0);
             }
             else {
             	rallyPoint = getClosestToEnemyHQ(rc.senseTowerLocations()); 	
@@ -349,6 +352,24 @@ public class RobotPlayer {
             }
             
             rc.yield();
+        }
+        
+        public int numFighters(){
+        	RobotInfo[] myRobots = rc.senseNearbyRobots(999999, myTeam);
+        	int numFighters = 0;
+			for (RobotInfo r : myRobots) {
+				RobotType type = r.type;
+				if (type == RobotType.SOLDIER) {
+					numFighters++;
+				} else if (type == RobotType.TANK) {
+					numFighters++;
+				} else if (type == RobotType.DRONE) {
+					numFighters++;
+				} else if (type == RobotType.LAUNCHER) {
+					numFighters++;
+				}
+			}
+			return numFighters;
         }
 
         public void analyzeMap(){
@@ -418,28 +439,34 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	//builds in checkerboard pattern
-        	if(rc.getTeamOre() > 500 && rc.readBroadcast(4)<1){
+        	if(buildingOre> 500 && rc.readBroadcast(4)<1){
 	        		if(buildLoc==null)
 	        			buildLoc = getBuildLocation(RobotType.MINERFACTORY);
 	        		buildLoc = buildUnit(RobotType.MINERFACTORY, buildLoc);
-	        		if(buildLoc==null)
+	        		if(buildLoc==null){
 	        			rc.broadcast(4, 1);
+	        			buildingOre-=500;
+	        		}
         	}
         	
-        	if(rc.getTeamOre()>600 && rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>500 ){
+        	if(buildingOre>600 && rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>500 ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
         		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
-        		if(buildLoc==null)
+        		if(buildLoc==null){
         			rc.broadcast(5, rc.readBroadcast(11)+1);
+        			buildingOre-=600;
+        		}
         	}
         	
-        	if(rc.getTeamOre()>300 && Clock.getRoundNum()>1000 && rand.nextDouble()>.85 && rc.readBroadcast(10)<maxSupplydepots){
+        	if(buildingOre>300 && Clock.getRoundNum()>1000 && rand.nextDouble()>.85 && rc.readBroadcast(10)<maxSupplydepots){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.SUPPLYDEPOT);
         		buildLoc = buildUnit(RobotType.SUPPLYDEPOT, buildLoc);
-        		if(buildLoc==null)
+        		if(buildLoc==null){
         			rc.broadcast(10, rc.readBroadcast(10)+1);
+        			buildingOre-=300;
+        		}
         	}
         	
         	if(rc.getTeamOre()>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
@@ -624,11 +651,6 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	attackLeastHealthEnemy(getEnemiesInAttackingRange());
-        	if(getAllies().length>20)
-        		rc.broadcast(20, 1); //enough to attack a tower
-        	if(getAllies().length>50)
-        		rc.broadcast(21, 1);; // enough to attack HQ
-            rc.yield();
         }
         
     }
