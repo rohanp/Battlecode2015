@@ -773,7 +773,7 @@ public class RobotPlayer {
 	        		}
             	}
             	else{
-            		if(Math.random() > 0.7){
+            		if(Math.random() > 0.5){
 		            	Direction dir = getSpawnDirection(RobotType.MINER);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
@@ -801,7 +801,7 @@ public class RobotPlayer {
 	        		}
             	}
             	else{
-            		if(Math.random() > 0.5){
+            		if(Math.random() > 0.3){
 		            	Direction dir = getSpawnDirection(RobotType.TANK);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
@@ -847,7 +847,7 @@ public class RobotPlayer {
 	        		}
             	}
             	else{
-            		if(Math.random() < 0.7){
+            		if(Math.random() < 0.9){
 		            	Direction dir = getSpawnDirection(RobotType.LAUNCHER);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
