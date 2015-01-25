@@ -638,6 +638,24 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
+        	if(movingThingyOre > 60){
+            	if(movingThingyOre > 800){
+            		Direction dir = getSpawnDirection(RobotType.TANK);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+	        			movingThingyOre-=250;
+	        		}
+            	}
+            	else{
+            		if(rand.nextDouble() > 0.5){
+		            	Direction dir = getSpawnDirection(RobotType.TANK);
+		        		if (dir!=null){
+		        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+		        			movingThingyOre-=250;
+		        		}
+            		}
+            	}
+            }
             rc.yield();
         }
     }
@@ -846,7 +864,7 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
             if(movingThingyOre > 60){
-            	if(movingThingyOre > 1500){
+            	if(movingThingyOre > 1000){
             		Direction dir = getSpawnDirection(RobotType.MINER);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
@@ -854,7 +872,7 @@ public class RobotPlayer {
 	        		}
             	}
             	else{
-            		if(Math.random() > 0.5){
+            		if(rand.nextDouble() > 0.75 || (Clock.getRoundNum() < 300 && rand.nextDouble() > 0.15)){
 		            	Direction dir = getSpawnDirection(RobotType.MINER);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
@@ -874,7 +892,7 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	if(movingThingyOre > 250){
-            	if(movingThingyOre > 1500){
+            	if(movingThingyOre > 500){
             		Direction dir = getSpawnDirection(RobotType.TANK);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
@@ -882,7 +900,7 @@ public class RobotPlayer {
 	        		}
             	}
             	else{
-            		if(Math.random() > 0.3){
+            		if(rand.nextDouble() > 0.3 && Clock.getRoundNum()>400){
 		            	Direction dir = getSpawnDirection(RobotType.TANK);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
@@ -920,7 +938,7 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
             if(movingThingyOre > 400){
-            	if(movingThingyOre > 1500){
+            	if(movingThingyOre > 1500 || (rand.nextDouble() > .1 && Clock.getRoundNum()>300)){
             		Direction dir = getSpawnDirection(RobotType.LAUNCHER);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
@@ -928,7 +946,7 @@ public class RobotPlayer {
 	        		}
             	}
             	else{
-            		if(Math.random() < 0.9){
+            		if(rand.nextDouble() < 0.6 && Clock.getRoundNum()>400){
 		            	Direction dir = getSpawnDirection(RobotType.LAUNCHER);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
