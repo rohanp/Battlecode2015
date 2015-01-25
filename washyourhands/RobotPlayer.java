@@ -172,9 +172,7 @@ public class RobotPlayer {
             }
             return null;
         }
-        
 
-        
     	public void tranferSupplies() throws GameActionException {
     		RobotInfo[] nearbyAllies = rc.senseNearbyRobots(rc.getLocation(),GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED,rc.getTeam());
     		double lowestSupply = rc.getSupplyLevel();
@@ -278,9 +276,10 @@ public class RobotPlayer {
                 if(Clock.getRoundNum()<500){
 	                this.buildingOre= ((double) rc.getTeamOre())*.5;
 	                this.movingThingyOre= ((double) rc.getTeamOre())*.5;
+                } else {
+	                this.buildingOre= ((double) rc.getTeamOre())*.95;
+	                this.movingThingyOre= ((double) rc.getTeamOre())*.05;
                 }
-                this.buildingOre= ((double) rc.getTeamOre())*.95;
-                this.movingThingyOre= ((double) rc.getTeamOre())*.05;
             }
             
         }
@@ -589,6 +588,7 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
+        	System.out.println("hi");
             mineAndMove();
        
             rc.yield();
