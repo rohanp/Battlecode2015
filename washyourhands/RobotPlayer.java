@@ -611,40 +611,65 @@ public class RobotPlayer {
         }
         
         public void mineAndMove() throws GameActionException {
-            MapLocation toMove = rc.getLocation();
-            double ore = rc.senseOre(toMove);
-            MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
-            for(MapLocation ml : possibleBlocks){
-                if(rc.senseTerrainTile(ml) == TerrainTile.NORMAL && !rc.isLocationOccupied(ml) && rc.senseOre(ml) > ore){
-                    toMove = ml;
-                    ore = rc.senseOre(ml);
-                }
-            }
-
-            int robs = 0;
-            RobotInfo[] nearbyAllies = rc.senseNearbyRobots(toMove, 1, rc.getTeam());
-            for(RobotInfo ri : nearbyAllies){
-                if(ri.type == RobotType.MINER)
-                    robs++;
-            }
-
-            if(ore >= rc.readBroadcast(6) && robs < rc.readBroadcast(9)){
-                rc.broadcast(6, (int)ore);
-                rc.broadcast(9, robs);
-                rc.broadcast(10, toMove.x);
-                rc.broadcast(11, toMove.y);
-            }
-            if(rc.isCoreReady()){
-    	        if(toMove == rc.getLocation() && ore > 40){
-    	            rc.mine();
-    	        }
-    	        else if(ore > 40)
-    	            rc.move(rc.getLocation().directionTo(toMove));
-    	        else{
-    	            MapLocation bestBlock = new MapLocation(rc.readBroadcast(10), rc.readBroadcast(11));
-    	            rc.move(rc.getLocation().directionTo(bestBlock));
-    	        }
-            }
+        	if(rc.readBroadcast(20) == 0){
+        		rc.broadcast(20, (int)rc.senseOre(rc.getLocation()));
+        	}
+        	if(rc.isCoreReady()){
+	        	if(rc.getLocation().distanceSquaredTo(rc.senseHQLocation()) < 250){
+	    		System.out.println("Too close");
+//	        		if(rc.canMove(rc.getLocation().directionTo(rc.senseEnemyHQLocation())))
+//		            	rc.move(rc.getLocation().directionTo(rc.senseEnemyHQLocation()));
+//	        		else{
+		    			Direction rand = getRandDir();
+		    			while(!rc.canMove(rand))
+		    				rand = getRandDir();
+			        	rc.move(rand);
+		        	//}
+	        	}
+	            MapLocation toMove = rc.getLocation();
+	            double ore = rc.senseOre(toMove);
+	            MapLocation[] possibleBlocks = MapLocation.getAllMapLocationsWithinRadiusSq(rc.getLocation(), 1);
+	            for(MapLocation ml : possibleBlocks){
+	                if(rc.senseTerrainTile(ml) == TerrainTile.NORMAL && !rc.isLocationOccupied(ml) && rc.senseOre(ml) > ore){
+	                    toMove = ml;
+	                    ore = rc.senseOre(ml);
+	                }
+	            }
+	
+	            int robs = 0;
+	            RobotInfo[] nearbyAllies = rc.senseNearbyRobots(toMove, 1, rc.getTeam());
+	            for(RobotInfo ri : nearbyAllies){
+	                if(ri.type == RobotType.MINER)
+	                    robs++;
+	            }
+	
+	            if(ore >= rc.readBroadcast(6) && robs < rc.readBroadcast(9)){
+	                rc.broadcast(6, (int)ore);
+	                rc.broadcast(9, robs);
+	                rc.broadcast(10, toMove.x);
+	                rc.broadcast(11, toMove.y);
+	            }
+	            if(rc.isCoreReady()){
+	            	if(rc.senseOre(rc.getLocation()) > rc.readBroadcast(20)/2){
+	            		System.out.println("This place is fine.");
+	    	            rc.mine();
+	    	        }
+	            	else if(ore > rc.readBroadcast(20)/2 && rc.canMove(rc.getLocation().directionTo(toMove))){
+	            		System.out.println("Moving towards ore (1 space away)");
+	    	            rc.move(rc.getLocation().directionTo(toMove));
+	            	}
+	    	        else{
+	    	        	System.out.println("We're getting desperate!");
+	    	            //MapLocation bestBlock = new MapLocation(rc.readBroadcast(10), rc.readBroadcast(11));
+	    	            //rc.move(rc.getLocation().directionTo(bestBlock));
+	    	        
+		    			Direction rand = getRandDir();
+		    			while(!rc.canMove(rand))
+		    				rand = getRandDir();
+			        	rc.move(rand);
+	    	        }
+	            }
+        	}
         }
     }
 
