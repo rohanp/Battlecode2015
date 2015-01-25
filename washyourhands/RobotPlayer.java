@@ -9,9 +9,9 @@ public class RobotPlayer {
 	static int maxBeavers=2;
 	static int maxMinerfactories=3;
 	static int maxMiners=50;
-	static int maxBarracks=2;
+	static int maxBarracks=5;
 	static int maxHelipads=1;
-	static int maxTankfactories=4;
+	static int maxTankfactories=5;
 	static int maxAerospacelabs=20;
 	static int maxSupplydepots=30;
 	static Direction facing;
@@ -89,7 +89,17 @@ public class RobotPlayer {
             BaseBot.friendlyTowerLocs=rc.senseTowerLocations();
         }
         
+		public void addToQueue(RobotController rc) throws GameActionException {
+            int queueStart = rc.readBroadcast(298), queueEnd = rc.readBroadcast(299);
 
+            rc.broadcast(queueEnd, rc.getID());
+
+            queueEnd ++;
+            if (queueEnd >= 2000) {
+                queueEnd = 300;
+            }
+            rc.broadcast(299, queueEnd);
+		}
         
 	    public void moveRandomly() throws GameActionException {
 	    		if(rand.nextDouble()<0.05){
@@ -356,12 +366,15 @@ public class RobotPlayer {
 	            rc.broadcast(1, 0);
             }
             
-            if(!isFinished){
-                analyzeMap();
-                analyzeTowers();
-            }
-            else{
-                chooseStrategy();
+            RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, myTeam);
+            int idToLook = rc.readBroadcast(199);
+
+            for (int i=0; i<allies.length; ++i) {
+                RobotInfo k = allies[i];
+
+                if (k.ID == idToLook) {
+                    rc.transferSupplies(100000, allies[i].location);
+                }
             }
             
             rc.yield();
@@ -467,17 +480,20 @@ public class RobotPlayer {
 	        		}
         	}
         	
-        	if(buildingOre>600 && rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>500 ){
-        		if(buildLoc==null)
-        			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
-        		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
-        		if(buildLoc==null){
-        			rc.broadcast(5, rc.readBroadcast(11)+1);
-        			buildingOre-=600;
+        	if(buildingOre>600){
+        		if(rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>400 ){
+	        		if(buildLoc==null)
+	        			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
+	        		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
+	        		if(buildLoc==null){
+	        			rc.broadcast(5, rc.readBroadcast(11)+1);
+	        			buildingOre-=600;
+	        		}
         		}
         	}
         	
-        	if(buildingOre>300 && Clock.getRoundNum()>1000 && rand.nextDouble()>.85 && rc.readBroadcast(10)<maxSupplydepots){
+        	
+        	if(buildingOre>300 && Clock.getRoundNum()>900 && rand.nextDouble()>.65 && rc.readBroadcast(10)<maxSupplydepots){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.SUPPLYDEPOT);
         		buildLoc = buildUnit(RobotType.SUPPLYDEPOT, buildLoc);
@@ -487,7 +503,7 @@ public class RobotPlayer {
         		}
         	}
         	
-        	if(buildingOre>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.15 && Clock.getRoundNum()>1000 || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
+        	if(buildingOre>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.55 && Clock.getRoundNum()>600*rand.nextDouble() || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.BARRACKS);
         		buildLoc = buildUnit(RobotType.BARRACKS, buildLoc);
@@ -496,7 +512,7 @@ public class RobotPlayer {
         			buildingOre-=300;
         		}
         	}
-        	if(buildingOre>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.50 && Clock.getRoundNum()>1000 || rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) ){
+        	if(buildingOre>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.40 && Clock.getRoundNum()>600*rand.nextDouble() || rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
         		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
@@ -506,7 +522,7 @@ public class RobotPlayer {
         		}
         	}
         	
-        	if(buildingOre>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>1000 || rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) ){
+        	if(buildingOre>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>600*rand.nextDouble() || rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.HELIPAD);
         		buildLoc = buildUnit(RobotType.HELIPAD, buildLoc);
@@ -662,6 +678,7 @@ public class RobotPlayer {
 
     public static class Soldier extends BaseBot {
     	private MapLocation defending;
+    	static boolean isSupplyLow=false;
     	
         public Soldier(RobotController rc) {
             super(rc);
@@ -700,6 +717,14 @@ public class RobotPlayer {
                 	//add move safely method
                     rc.move(newDir);
                 }
+                double supply = rc.getSupplyLevel();
+    			if (!isSupplyLow && supply <= 500) {
+    				addToQueue(rc);
+                    isSupplyLow = true;
+    			}
+                else if (supply > 500) {
+                    isSupplyLow = false;
+                }
             }
             rc.yield();
         }
@@ -719,6 +744,7 @@ public class RobotPlayer {
     
     public static class Tank extends BaseBot {
     	private MapLocation defending;
+    	boolean isSupplyLow=false;
     	
         public Tank(RobotController rc) {
             super(rc);
@@ -759,6 +785,15 @@ public class RobotPlayer {
                 	//add move safely method
                     rc.move(newDir);
                 }
+                
+                double supply = rc.getSupplyLevel();
+    			if (!isSupplyLow && supply <= 500) {
+    				addToQueue(rc);
+                    isSupplyLow = true;
+    			}
+                else if (supply > 500) {
+                    isSupplyLow = false;
+                }
             }
             rc.yield();
         }
@@ -766,6 +801,8 @@ public class RobotPlayer {
     
     public static class Launcher extends BaseBot {
     	private MapLocation defending;
+    	boolean isSupplyLow=false;
+    	
         public Launcher(RobotController rc) {
             super(rc);
             MapLocation[] friendlyTowerLocs = rc.senseTowerLocations();
@@ -804,18 +841,24 @@ public class RobotPlayer {
                 	//add move safely method
                     rc.move(newDir);
                 }
+                
+                double supply = rc.getSupplyLevel();
+    			if (!isSupplyLow && supply <= 500) {
+    				addToQueue(rc);
+                    isSupplyLow = true;
+    			}
+                else if (supply > 500) {
+                    isSupplyLow = false;
+                }
             }
             rc.yield();
         }
     }
 
     public static class Drone extends BaseBot {
-    	private MapLocation defending;
     	
         public Drone(RobotController rc) {
             super(rc);
-            int index = (int)(rand.nextDouble()*((double)friendlyTowerLocs.length));
-            defending = friendlyTowerLocs[index];
         }
 
         public void execute() throws GameActionException {
@@ -899,14 +942,18 @@ public class RobotPlayer {
 	        			movingThingyOre-=250;
 	        		}
             	}
-            	else{
-            		if(rand.nextDouble() > 0.3 && Clock.getRoundNum()>400){
+            	else if(rand.nextDouble() > 0.3 && Clock.getRoundNum()>400){
 		            	Direction dir = getSpawnDirection(RobotType.TANK);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
 		        			movingThingyOre-=250;
 		        		}
             		}
+            	else if(rc.getTeamOre()>1100){
+            		Direction dir = getSpawnDirection(RobotType.TANK);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
+	        		}
             	}
             }
             rc.yield();
@@ -938,21 +985,26 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
             if(movingThingyOre > 400){
-            	if(movingThingyOre > 1500 || (rand.nextDouble() > .1 && Clock.getRoundNum()>300)){
+            	if(movingThingyOre > 1500 || (rand.nextDouble() > .2 && Clock.getRoundNum()>300)){
             		Direction dir = getSpawnDirection(RobotType.LAUNCHER);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
 	        			movingThingyOre-=400;
 	        		}
             	}
-            	else{
-            		if(rand.nextDouble() < 0.6 && Clock.getRoundNum()>400){
+            	else if(rand.nextDouble() < 0.7 && Clock.getRoundNum()>400){
 		            	Direction dir = getSpawnDirection(RobotType.LAUNCHER);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
 		        			movingThingyOre-=400;
 		        		}
             		}
+            	
+            	else if(rc.getTeamOre()>1100){
+            		Direction dir = getSpawnDirection(RobotType.LAUNCHER);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.LAUNCHER, getSpawnDirection(RobotType.LAUNCHER));
+	        		}
             	}
             }
             rc.yield();
