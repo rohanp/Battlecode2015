@@ -277,8 +277,8 @@ public class RobotPlayer {
 	                this.buildingOre= ((double) rc.getTeamOre())*.5;
 	                this.movingThingyOre= ((double) rc.getTeamOre())*.5;
                 } else {
-	                this.buildingOre= ((double) rc.getTeamOre())*.95;
-	                this.movingThingyOre= ((double) rc.getTeamOre())*.05;
+	                this.buildingOre= ((double) rc.getTeamOre())*.20;
+	                this.movingThingyOre= ((double) rc.getTeamOre())*.80;
                 }
             }
             
