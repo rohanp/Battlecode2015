@@ -648,7 +648,6 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-        	System.out.println("hi");
             mineAndMove();
        
             rc.yield();
@@ -661,14 +660,14 @@ public class RobotPlayer {
         	if(rc.isCoreReady()){
 	        	if(rc.getLocation().distanceSquaredTo(rc.senseHQLocation()) < 250){
 	    		System.out.println("Too close");
-//	        		if(rc.canMove(rc.getLocation().directionTo(rc.senseEnemyHQLocation())))
-//		            	rc.move(rc.getLocation().directionTo(rc.senseEnemyHQLocation()));
-//	        		else{
+	        		if(rc.canMove(rc.getLocation().directionTo(rc.senseEnemyHQLocation())))
+		            	rc.move(rc.getLocation().directionTo(rc.senseEnemyHQLocation()));
+	        		else{
 		    			Direction rand = getRandDir();
 		    			while(!rc.canMove(rand))
 		    				rand = getRandDir();
 			        	rc.move(rand);
-		        	//}
+		        	}
 	        	}
 	            MapLocation toMove = rc.getLocation();
 	            double ore = rc.senseOre(toMove);
