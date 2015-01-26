@@ -44,6 +44,8 @@ public class RobotPlayer {
             myself = new Miner(rc);
         } else if (rc.getType() == RobotType.TANK) {
             myself = new Tank(rc);
+        } else if (rc.getType() == RobotType.LAUNCHER) {
+            myself = new Launcher(rc);
         } else if (rc.getType() == RobotType.DRONE) {
             myself = new Drone(rc);
             rc.broadcast(199, rc.getID());
@@ -206,8 +208,8 @@ public class RobotPlayer {
             return allies;
         }
 
-        public RobotInfo[] getEnemiesInAttackingRange() {
-            RobotInfo[] enemies = rc.senseNearbyRobots(RobotType.SOLDIER.attackRadiusSquared, theirTeam);
+        public RobotInfo[] getEnemiesInAttackingRange(RobotType type) {
+            RobotInfo[] enemies = rc.senseNearbyRobots(type.attackRadiusSquared, theirTeam);
             return enemies;
         }
         
@@ -263,21 +265,44 @@ public class RobotPlayer {
             rc.attackLocation(toAttack);
         }
         
-        public void attackMostHealthEnemy(RobotInfo[] enemies) throws GameActionException {
+        public MapLocation getLocationMostHealthEnemy(RobotInfo[] enemies) throws GameActionException {
             if (enemies.length == 0) {
-                return;
+                return null;
             }
 
-            double maxEnergon = Double.MIN_VALUE;
+            double minEnergon = 0;
             MapLocation toAttack = null;
             for (RobotInfo info : enemies) {
-                if (info.health > maxEnergon) {
+            	if(info.type==RobotType.TOWER){
+            		toAttack=info.location;
+            		break;
+            	}
+            		
+                if (info.health > minEnergon) {
                     toAttack = info.location;
-                    maxEnergon = info.health;
+                    minEnergon = info.health;
                 }
             }
 
-            rc.attackLocation(toAttack);
+            return toAttack;
+        }
+        
+        public MapLocation getLocationMostEnemies(RobotInfo[] enemies) throws GameActionException {
+            if (enemies.length == 0) {
+                return null;
+            }
+
+            int robots=0;
+            MapLocation toAttack = null;
+            for (RobotInfo info : enemies) {
+            	int len = rc.senseNearbyRobots(info.location,1,theirTeam).length;
+                if (len > robots ) {
+                    toAttack = info.location;
+                    robots = len;
+                }
+            }
+
+            return toAttack;
         }
 
         public void beginningOfTurn() {
@@ -326,7 +351,7 @@ public class RobotPlayer {
         public void execute() throws GameActionException {
         	friendlyTowerLocs=rc.senseTowerLocations();
         	
-        	RobotInfo[] enemies = getEnemiesInAttackingRange();
+        	RobotInfo[] enemies = getEnemiesInAttackingRange(RobotType.HQ);
         	
         	if(enemies.length>0){
 		        	if(rc.isWeaponReady()){
@@ -380,7 +405,6 @@ public class RobotPlayer {
                     rc.transferSupplies(100000, allies[i].location);
                 }
             }
-            
             rc.yield();
         }
         
@@ -648,6 +672,14 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
+            RobotInfo[] enemies = getEnemiesInAttackingRange(RobotType.MINER);
+            if (enemies.length > 0) {
+                //attack!
+                if (rc.isWeaponReady()) {
+                    attackLeastHealthEnemy(enemies);
+                }
+            }
+            
             mineAndMove();
        
             rc.yield();
@@ -659,7 +691,7 @@ public class RobotPlayer {
         	}
         	if(rc.isCoreReady()){
 	        	if(rc.getLocation().distanceSquaredTo(rc.senseHQLocation()) < 250){
-	    		System.out.println("Too close");
+	    		//System.out.println("Too close");
 	        		if(rc.canMove(rc.getLocation().directionTo(rc.senseEnemyHQLocation())))
 		            	rc.move(rc.getLocation().directionTo(rc.senseEnemyHQLocation()));
 	        		else{
@@ -694,15 +726,15 @@ public class RobotPlayer {
 	            }
 	            if(rc.isCoreReady()){
 	            	if(rc.senseOre(rc.getLocation()) > 10){
-	            		System.out.println("This place is fine.");
+	            		//System.out.println("This place is fine.");
 	    	            rc.mine();
 	    	        }
 	            	else if(ore > 10 && rc.canMove(rc.getLocation().directionTo(toMove))){
-	            		System.out.println("Moving towards ore (1 space away)");
+	            		//System.out.println("Moving towards ore (1 space away)");
 	    	            rc.move(rc.getLocation().directionTo(toMove));
 	            	}
 	    	        else{
-	    	        	System.out.println("We're getting desperate!");
+	    	        	//System.out.println("We're getting desperate!");
 	    	            //MapLocation bestBlock = new MapLocation(rc.readBroadcast(10), rc.readBroadcast(11));
 	    	            //rc.move(rc.getLocation().directionTo(bestBlock));
 	    	        
@@ -760,7 +792,7 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            RobotInfo[] enemies = getEnemiesInAttackingRange();
+            RobotInfo[] enemies = getEnemiesInAttackingRange(RobotType.SOLDIER);
 
             if (enemies.length > 0) {
                 //attack!
@@ -805,7 +837,7 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	if(rc.isWeaponReady() && !rc.isCoreReady())
-        		attackLeastHealthEnemy(getEnemiesInAttackingRange());
+        		attackLeastHealthEnemy(getEnemiesInAttackingRange(RobotType.TOWER));
         }
         
     }
@@ -826,7 +858,7 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            RobotInfo[] enemies = getEnemiesInAttackingRange();
+            RobotInfo[] enemies = getEnemiesInAttackingRange(RobotType.TANK);
 
 
             if (enemies.length > 0) {
@@ -874,32 +906,56 @@ public class RobotPlayer {
         public Launcher(RobotController rc) {
             super(rc);
             MapLocation[] friendlyTowerLocs = rc.senseTowerLocations();
-            System.out.println(friendlyTowerLocs);
             int index = 0;
             index = (int)(rand.nextDouble()*((double)friendlyTowerLocs.length));
             if(friendlyTowerLocs.length>0)
-            	defending = friendlyTowerLocs[index];
+            	defending = friendlyTowerLocs[0];
             else
             	defending = this.myHQ;
         }
 
         public void execute() throws GameActionException {
-            RobotInfo[] enemies = getEnemiesInAttackingRange();
+            RobotInfo[] enemies = getEnemiesInAttackingRange(RobotType.MISSILE);
+            RobotInfo[] normalEnemies = getEnemiesInAttackingRange(RobotType.LAUNCHER);
 
             if (enemies.length > 0) {
                 //attack!
+            	if(rc.getMissileCount()>0){
+            		for(RobotInfo enemy: enemies){
+            			if(enemy.type==RobotType.TOWER || enemy.type==RobotType.HQ){
+            				Direction dir= rc.getLocation().directionTo(enemy.location);
+            				if(rc.canLaunch(dir))
+            					rc.launchMissile(dir);
+            			}
+            		}
+            		if(rc.getMissileCount()>0){
+            			Direction dir= rc.getLocation().directionTo(getLocationMostEnemies(enemies));
+            			System.out.println("fired missile!");
+            			System.out.println(dir);
+            			if(rc.canLaunch(dir))
+            				rc.launchMissile(dir);
+            		}
+            		
+            		if(rc.getMissileCount()>0){
+            			Direction dir= rc.getLocation().directionTo(getLocationMostHealthEnemy(enemies));
+            			System.out.println("fired missile!");
+            			if(rc.canLaunch(dir))
+            				rc.launchMissile(dir);
+            		}
+            		
+            	}
                 if (rc.isWeaponReady()) {
-                    attackLeastHealthEnemy(enemies);
+                    attackLeastHealthEnemy(normalEnemies);
                 }
             }
             else if (rc.isCoreReady()) {
                 int rallyX = rc.readBroadcast(0);
                 int rallyY = rc.readBroadcast(1);
-                
                 MapLocation moveTo;
                 
-                if(rallyX==0 && rallyY==0)
+                if(rallyX!=0 && rallyY!=0){
                 	moveTo= new MapLocation(rallyX, rallyY);
+                }
                 else
                 	moveTo = defending;
                 	
