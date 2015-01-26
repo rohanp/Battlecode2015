@@ -9,7 +9,7 @@ public class RobotPlayer {
 	static int maxBeavers=2;
 	static int maxMinerfactories=3;
 	static int maxMiners=50;
-	static int maxBarracks=5;
+	static int maxBarracks=1;
 	static int maxHelipads=1;
 	static int maxTankfactories=5;
 	static int maxAerospacelabs=20;
@@ -344,6 +344,10 @@ public class RobotPlayer {
         		if(rc.getTeamOre()>200 && spawnUnit(RobotType.BEAVER, getSpawnDirection(RobotType.BEAVER))){
         			rc.broadcast(2, rc.readBroadcast(2) + 1);
         		}
+        	} else if(Clock.getRoundNum()%10==0 && numBeavers()<maxBeavers){
+        		if(rc.getTeamOre()>200 && spawnUnit(RobotType.BEAVER, getSpawnDirection(RobotType.BEAVER))){
+        			rc.broadcast(2, rc.readBroadcast(2) + 1);
+        		}
         	}
 
             MapLocation rallyPoint=null;
@@ -351,7 +355,7 @@ public class RobotPlayer {
             if (numFighters()>50 || Clock.getRoundNum()>1700 && numFighters()>30){   // can attack HQ
             	rallyPoint = this.theirHQ;
             }
-            else if(numFighters()>20){ //can attack Tower
+            else if(numFighters()>30){ //can attack Tower
             	MapLocation[] enemyTowers =rc.senseEnemyTowerLocations();
             	if(enemyTowers.length>0){
             		rallyPoint = getClosestToHQ(enemyTowers);
@@ -402,6 +406,17 @@ public class RobotPlayer {
 			}
 			return numFighters;
         }
+		
+		public int numBeavers(){
+        	RobotInfo[] myRobots = rc.senseNearbyRobots(999999, myTeam);
+        	int numFighters = 0;
+			for (RobotInfo r : myRobots) {
+				RobotType type = r.type;
+				if (type == RobotType.BEAVER)
+					numFighters++;
+			}
+			return numFighters;
+		}
 
         public void analyzeMap(){
             while(ypos < yMax + 1){
@@ -470,18 +485,17 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	//builds in checkerboard pattern
-        	if(buildingOre> 500 && rc.readBroadcast(4)<1){
+        	if(rc.getTeamOre()> 500 && rc.readBroadcast(4)<1){
 	        		if(buildLoc==null)
 	        			buildLoc = getBuildLocation(RobotType.MINERFACTORY);
 	        		buildLoc = buildUnit(RobotType.MINERFACTORY, buildLoc);
 	        		if(buildLoc==null){
 	        			rc.broadcast(4, 1);
-	        			buildingOre-=500;
 	        		}
         	}
         	
         	if(buildingOre>600){
-        		if(rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>400 ){
+        		if(rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.5 && Clock.getRoundNum()>600 ){
 	        		if(buildLoc==null)
 	        			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
 	        		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
@@ -503,16 +517,15 @@ public class RobotPlayer {
         		}
         	}
         	
-        	if(buildingOre>300 && (rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.55 && Clock.getRoundNum()>600*rand.nextDouble() || rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) ){
+        	if(buildingOre>500 && ((rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.30 && Clock.getRoundNum()>500*rand.nextDouble()) || (rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) && Clock.getRoundNum()>200) ){
         		if(buildLoc==null)
-        			buildLoc = getBuildLocation(RobotType.BARRACKS);
-        		buildLoc = buildUnit(RobotType.BARRACKS, buildLoc);
+        			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
+        		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
         		if(buildLoc==null){
-        			rc.broadcast(5, rc.readBroadcast(5)+1);
-        			buildingOre-=300;
+        			rc.broadcast(7, rc.readBroadcast(7)+1);
+        			buildingOre-=500;
         		}
-        	}
-        	if(buildingOre>500 && (rc.readBroadcast(7)<maxTankfactories && rand.nextDouble()>.40 && Clock.getRoundNum()>600*rand.nextDouble() || rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0) ){
+        	} else if(rc.readBroadcast(7)<1 && rc.readBroadcast(5)>0 && rc.getTeamOre()>500){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
         		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
@@ -522,7 +535,17 @@ public class RobotPlayer {
         		}
         	}
         	
-        	if(buildingOre>300 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>600*rand.nextDouble() || rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) ){
+        	if(buildingOre>300 && ((rc.readBroadcast(5)<maxBarracks && rand.nextDouble()>.65 && Clock.getRoundNum()>500*rand.nextDouble()) || (rc.readBroadcast(5)<1 && rc.readBroadcast(4)>0) && Clock.getRoundNum()>200) ){
+        		if(buildLoc==null)
+        			buildLoc = getBuildLocation(RobotType.BARRACKS);
+        		buildLoc = buildUnit(RobotType.BARRACKS, buildLoc);
+        		if(buildLoc==null){
+        			rc.broadcast(5, rc.readBroadcast(5)+1);
+        			buildingOre-=300;
+        		}
+        	}
+        	
+        	if(buildingOre>300 && rc.readBroadcast(4)>0 && (rc.readBroadcast(8)<maxHelipads && rand.nextDouble()>.2 && Clock.getRoundNum()>600*rand.nextDouble() || (rc.readBroadcast(8)<1 && rc.readBroadcast(4)>0) && Clock.getRoundNum()>300) ){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.HELIPAD);
         		buildLoc = buildUnit(RobotType.HELIPAD, buildLoc);
@@ -532,13 +555,34 @@ public class RobotPlayer {
         		}
         	}
         	
-        	if(buildingOre>500 && (rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.85 || rc.readBroadcast(11)<1) ){
+        	if(buildingOre>500 && (rc.readBroadcast(11)<maxAerospacelabs && rand.nextDouble()>.45) || (rc.readBroadcast(11)<1 && Clock.getRoundNum()>200 )){
         		if(buildLoc==null)
         			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
         		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
         		if(buildLoc==null){
         			rc.broadcast(11, rc.readBroadcast(11)+1);
         			buildingOre-=500;
+        		}
+        	}
+        	
+        	if(rc.getTeamOre()>1000){
+        		if(rand.nextDouble()>.5){
+	        		if(buildLoc==null)
+	        			buildLoc = getBuildLocation(RobotType.AEROSPACELAB);
+	        		buildLoc = buildUnit(RobotType.AEROSPACELAB, buildLoc);
+	        		if(buildLoc==null){
+	        			rc.broadcast(11, rc.readBroadcast(11)+1);
+	        			buildingOre-=500;
+	        		}
+        		} else {
+            		if(buildLoc==null)
+            			buildLoc = getBuildLocation(RobotType.TANKFACTORY);
+            		buildLoc = buildUnit(RobotType.TANKFACTORY, buildLoc);
+            		if(buildLoc==null){
+            			rc.broadcast(7, rc.readBroadcast(7)+1);
+            			buildingOre-=500;
+            		}
+        			
         		}
         	}
         	
@@ -932,23 +976,26 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
             if(movingThingyOre > 60){
-            	if(movingThingyOre > 1000){
+            	if(movingThingyOre > 1500){
+            		Direction dir = getSpawnDirection(RobotType.MINER);
+	        		if (dir!=null){
+	        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
+	        			movingThingyOre-=60;
+	        		}
+            	} else if(rand.nextDouble()>.99){
             		Direction dir = getSpawnDirection(RobotType.MINER);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
 	        			movingThingyOre-=60;
 	        		}
             	}
-            	else{
-            		if(rand.nextDouble() > 0.75 || (Clock.getRoundNum() < 300 && rand.nextDouble() > 0.15)){
-		            	Direction dir = getSpawnDirection(RobotType.MINER);
-		        		if (dir!=null){
-		        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
-		        			movingThingyOre-=60;
-		        		}
-            		}
-            	}
             }
+        	if(Clock.getRoundNum()<200 && rc.getTeamOre()> 60){
+            	Direction dir = getSpawnDirection(RobotType.MINER);
+        		if (dir!=null){
+        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
+        		}
+        	}
             rc.yield();
         }
     }
@@ -960,21 +1007,21 @@ public class RobotPlayer {
 
         public void execute() throws GameActionException {
         	if(movingThingyOre > 250){
-            	if(movingThingyOre > 500){
+            	if(movingThingyOre > 700){
             		Direction dir = getSpawnDirection(RobotType.TANK);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
 	        			movingThingyOre-=250;
 	        		}
             	}
-            	else if(rand.nextDouble() > 0.3 && Clock.getRoundNum()>400){
+            	else if(rand.nextDouble() > 0.75 && Clock.getRoundNum()>500){
 		            	Direction dir = getSpawnDirection(RobotType.TANK);
 		        		if (dir!=null){
 		        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
 		        			movingThingyOre-=250;
 		        		}
             		}
-            	else if(rc.getTeamOre()>1100){
+            	else if(rc.getTeamOre()>1400){
             		Direction dir = getSpawnDirection(RobotType.TANK);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.TANK, getSpawnDirection(RobotType.TANK));
@@ -1009,7 +1056,7 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
-            if(movingThingyOre > 400){
+            if(movingThingyOre > 400 || (rc.getTeamOre()>400 && rand.nextDouble()>.9)){
             	if(movingThingyOre > 1500 || (rand.nextDouble() > .2 && Clock.getRoundNum()>300)){
             		Direction dir = getSpawnDirection(RobotType.LAUNCHER);
 	        		if (dir!=null){
