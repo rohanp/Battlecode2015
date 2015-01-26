@@ -650,11 +650,11 @@ public class RobotPlayer {
 	                rc.broadcast(11, toMove.y);
 	            }
 	            if(rc.isCoreReady()){
-	            	if(rc.senseOre(rc.getLocation()) > rc.readBroadcast(20)/2){
+	            	if(rc.senseOre(rc.getLocation()) > 10){
 	            		System.out.println("This place is fine.");
 	    	            rc.mine();
 	    	        }
-	            	else if(ore > rc.readBroadcast(20)/2 && rc.canMove(rc.getLocation().directionTo(toMove))){
+	            	else if(ore > 10 && rc.canMove(rc.getLocation().directionTo(toMove))){
 	            		System.out.println("Moving towards ore (1 space away)");
 	    	            rc.move(rc.getLocation().directionTo(toMove));
 	            	}
