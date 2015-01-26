@@ -982,7 +982,7 @@ public class RobotPlayer {
 	        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
 	        			movingThingyOre-=60;
 	        		}
-            	} else if(rand.nextDouble()>.99){
+            	} else if(rand.nextDouble()>.98){
             		Direction dir = getSpawnDirection(RobotType.MINER);
 	        		if (dir!=null){
 	        			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
@@ -990,7 +990,7 @@ public class RobotPlayer {
 	        		}
             	}
             }
-        	if(Clock.getRoundNum()<200 && rc.getTeamOre()> 60){
+        	if(Clock.getRoundNum()<400*rand.nextDouble() && rc.getTeamOre()> 60){
             	Direction dir = getSpawnDirection(RobotType.MINER);
         		if (dir!=null){
         			spawnUnit(RobotType.MINER, getSpawnDirection(RobotType.MINER));
