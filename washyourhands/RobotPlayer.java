@@ -374,6 +374,16 @@ public class RobotPlayer {
         			rc.broadcast(2, rc.readBroadcast(2) + 1);
         		}
         	}
+        	
+            MapLocation loc = rc.getLocation();
+        	RobotInfo[] robots = rc.senseNearbyRobots(loc, 30, theirTeam);
+        	if(robots.length>10){ // if too many enemies, call for help
+        		rc.broadcast(0, loc.x);
+        		rc.broadcast(1, loc.y);
+        		rc.broadcast(92, 1);
+        	} else{
+        		rc.broadcast(92, 0);
+        	}
 
             MapLocation rallyPoint=null;
             
@@ -387,13 +397,14 @@ public class RobotPlayer {
             	}
             } 
             
-            if(rallyPoint!=null){
+            if(rallyPoint!=null && rc.readBroadcast(91)==0 && rc.readBroadcast(92)==0){
 	            rc.broadcast(0, rallyPoint.x);
 	            rc.broadcast(1, rallyPoint.y);
-            } else{
+            } else if(rc.readBroadcast(91)==0 && rc.readBroadcast(92)==0){  //make sure nothing is under attack
 	            rc.broadcast(0, 0);
 	            rc.broadcast(1, 0);
             }
+            
             
             RobotInfo[] allies = rc.senseNearbyRobots(GameConstants.SUPPLY_TRANSFER_RADIUS_SQUARED, myTeam);
             int idToLook = rc.readBroadcast(199);
@@ -838,6 +849,15 @@ public class RobotPlayer {
         }
 
         public void execute() throws GameActionException {
+        	MapLocation loc = rc.getLocation();
+        	RobotInfo[] robots = rc.senseNearbyRobots(loc, 30, theirTeam);
+        	if(robots.length>10 && rc.readBroadcast(92) == 0){ // if too many enemies, call for help
+        		rc.broadcast(0, loc.x);
+        		rc.broadcast(1, loc.y);
+        		rc.broadcast(91, 1);
+        	} else{
+        		rc.broadcast(91, 0);
+        	}
         	if(rc.isWeaponReady() && !rc.isCoreReady())
         		attackLeastHealthEnemy(getEnemiesInAttackingRange(RobotType.TOWER));
         }
