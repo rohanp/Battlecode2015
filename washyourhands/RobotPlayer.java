@@ -265,6 +265,66 @@ public class RobotPlayer {
             rc.attackLocation(toAttack);
         }
         
+    	public void attackHighestPriorityEnemy(RobotInfo[] enemies) throws GameActionException {
+        	MapLocation toAttack=null;
+        	double priority = 0;
+    		for(RobotInfo enemy : enemies){
+    			if(enemy.health<10){
+    				toAttack=enemy.location;
+    				priority=11;
+    			}else if(enemy.type == RobotType.MISSILE){
+        			toAttack=enemy.location;
+        			priority=10;
+        		} else if (enemy.type == RobotType.TOWER){
+        			if(priority<9){
+        				toAttack=enemy.location;
+            			priority=9;
+        			}	
+        		} else if(enemy.type == RobotType.BEAVER){
+        			if(priority<8){
+        				toAttack=enemy.location;
+            			priority=8;
+        			}
+        		} else if(enemy.type == RobotType.LAUNCHER){
+        			if(priority<7.5){
+        				toAttack=enemy.location;
+            			priority=7.5;
+        			}
+        		} else if(enemy.type == RobotType.MINERFACTORY){
+        			if(priority<7){
+        				toAttack=enemy.location;
+            			priority=7;
+        			}
+        		} else if(enemy.type == RobotType.MINER){
+        			if(priority<6){
+        				toAttack=enemy.location;
+            			priority=6;
+        			}
+        		} else if (enemy.type == RobotType.TANKFACTORY || enemy.type == RobotType.AEROSPACELAB){
+        			if(priority<5){
+        				toAttack=enemy.location;
+            			priority=5;       				
+        			}
+        		} else if(enemy.type == RobotType.BARRACKS || enemy.type == RobotType.HELIPAD){
+        			if(priority<4){
+        				toAttack=enemy.location;
+            			priority=4;
+        			}
+        		} else if(enemy.type == RobotType.SOLDIER || enemy.type == RobotType.DRONE){
+        			if(priority<3){
+        				toAttack=enemy.location;
+            			priority=3;
+        			}       			
+        		} else{
+        			if(priority==0){
+        				toAttack=getLocationLeastHealthEnemy(enemies);
+        			}
+        		}
+        	}
+        	
+    		rc.attackLocation(toAttack);
+    	}
+        
         public MapLocation getLocationMostHealthEnemy(RobotInfo[] enemies) throws GameActionException {
             if (enemies.length == 0) {
                 return null;
@@ -279,6 +339,24 @@ public class RobotPlayer {
             	}
             		
                 if (info.health > minEnergon) {
+                    toAttack = info.location;
+                    minEnergon = info.health;
+                }
+            }
+
+            return toAttack;
+        }
+        
+        public MapLocation getLocationLeastHealthEnemy(RobotInfo[] enemies) throws GameActionException {
+            if (enemies.length == 0) {
+                return null;
+            }
+
+            double minEnergon = 999999;
+            MapLocation toAttack = null;
+            for (RobotInfo info : enemies) {
+            		
+                if (info.health < minEnergon) {
                     toAttack = info.location;
                     minEnergon = info.health;
                 }
@@ -397,7 +475,7 @@ public class RobotPlayer {
             	}
             } 
             
-            if(rallyPoint!=null && rc.readBroadcast(91)==0 && rc.readBroadcast(92)==0){
+            if(rallyPoint!=null && rc.readBroadcast(91)==0 && rc.readBroadcast(92)==0){ //make sure nothing is under attack
 	            rc.broadcast(0, rallyPoint.x);
 	            rc.broadcast(1, rallyPoint.y);
             } else if(rc.readBroadcast(91)==0 && rc.readBroadcast(92)==0){  //make sure nothing is under attack
@@ -886,8 +964,9 @@ public class RobotPlayer {
 
             if (enemies.length > 0) {
                 //attack!
+
                 if (rc.isWeaponReady()) {
-                    attackLeastHealthEnemy(enemies);
+                    attackHighestPriorityEnemy(enemies);
                 }
             }
             else if (rc.isCoreReady()) {
@@ -958,14 +1037,7 @@ public class RobotPlayer {
             			if(rc.canLaunch(dir))
             				rc.launchMissile(dir);
             		}
-            		
-            		if(rc.getMissileCount()>0){
-            			Direction dir= rc.getLocation().directionTo(getLocationMostHealthEnemy(enemies));
-            			System.out.println("fired missile!");
-            			if(rc.canLaunch(dir))
-            				rc.launchMissile(dir);
-            		}
-            		
+            		      		
             	}
                 /*if (rc.isWeaponReady()) {
                     attackLeastHealthEnemy(normalEnemies);
@@ -1163,4 +1235,5 @@ public class RobotPlayer {
             rc.yield();
         }
     }
+
 }
