@@ -689,7 +689,7 @@ public class RobotPlayer {
         		rc.broadcast(20, (int)rc.senseOre(rc.getLocation()));
         	}
         	if(rc.isCoreReady()){
-	        	if(rc.getLocation().distanceSquaredTo(rc.senseHQLocation()) < 250){
+	        	if(rc.getLocation().distanceSquaredTo(rc.senseHQLocation()) < 10){
 	    		//System.out.println("Too close");
 	        		if(rc.canMove(rc.getLocation().directionTo(rc.senseEnemyHQLocation())))
 		            	rc.move(rc.getLocation().directionTo(rc.senseEnemyHQLocation()));
